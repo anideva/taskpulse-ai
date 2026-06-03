@@ -5,13 +5,11 @@ body {
 }
 
 .container {
-  max-width: 600px;
-  margin: 60px auto;
-  background: #ffffff;
-  padding: 25px;
-  border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  max-width: 1200px;
+  margin: 40px auto;
+  padding: 20px;
 }
+
 
 input {
   width: 100%;
@@ -129,4 +127,30 @@ button:hover {
 
 .task-buttons button {
   margin-left: 8px;
+}
+
+.task-form {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 25px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.task-form h4 {
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.ai-subtasks {
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+
+.ai-subtasks h5 {
+  margin-top: 0;
+  margin-bottom: 10px;
 }

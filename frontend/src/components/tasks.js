@@ -79,7 +79,7 @@ function Tasks() {
 
 
   return (
-    <div>
+    <div className="container">
        <button
       style={{
         position: "absolute",
@@ -100,9 +100,12 @@ function Tasks() {
       Logout
     </button>
 
-      <h3>My Tasks</h3>
+    <h3>My Tasks</h3>
 
-      <form onSubmit={addTask} className="task-input">
+<div className="task-form">
+  <h4>Create New Task</h4>
+
+  <form onSubmit={addTask} className="task-input">
   <input
     placeholder="New task title"
     value={title}
@@ -121,26 +124,33 @@ function Tasks() {
     <button
     type="button"
     onClick={generateSubtasks}
+    disabled={loadingAI}
   >
     {loadingAI
       ? "Generating..."
       : "✨ Generate with AI"}
   </button>
 </form>
-<div>
+{generatedSubtasks.length > 0 && (
+  <div className="ai-subtasks">
+    <h5>AI Suggested Subtasks</h5>
 
-  {generatedSubtasks.map((subtask, index) => (
-
-    <div key={index}>
-      • {subtask}
-    </div>
-
-  ))}
-
-</div>
+    {generatedSubtasks.map((subtask, index) => (
+      <div key={index}>
+        • {subtask}
+      </div>
+    ))}
+  </div>
+)}
 
       <div>
-  {tasks.map((task) => (
+  {tasks.length === 0 ? (
+    <div className="empty-state">
+      <h3>No tasks yet</h3>
+      <p>Create your first task and stay organized.</p>
+    </div>
+  ) : (
+    tasks.map((task) => (
     <div
   className="task-item"
   key={task._id}
@@ -149,7 +159,19 @@ function Tasks() {
 
       <div>
         <strong>{task.title}</strong>
-        <div>Status: {task.status}</div>
+        <div
+  style={{
+    color:
+      task.status === "completed"
+        ? "green"
+        : "#f39c12",
+    fontWeight: "bold",
+  }}
+>
+  {task.status === "completed"
+    ? "🟢 Completed"
+    : "🟡 Pending"}
+</div>
         <div>
           Deadline:{" "}
           {task.dueDate
@@ -169,10 +191,11 @@ function Tasks() {
         </button>
       </div>
     </div>
-  ))}
+  ))
+)}
 </div>
-
-    </div>
+</div>
+</div>
   );
 }
 
