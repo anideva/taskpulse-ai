@@ -41,7 +41,7 @@ const updateTask = async (req, res) => {
 
     // Check ownership
     if (task.user.toString() !== req.user.id) {
-      return res.status(401).json({ message: "Not authorized" });
+      return res.status(403).json({ message: "Forbidden: You do not own this task" });
     }
 
     task.title = req.body.title || task.title;
@@ -67,7 +67,7 @@ const deleteTask = async (req, res) => {
 
     // Ensure task belongs to logged-in user
     if (task.user.toString() !== req.user.id) {
-      return res.status(401).json({ message: "Not authorized" });
+      return res.status(403).json({ message: "Forbidden: You do not own this task" });
     }
 
     await task.deleteOne();
