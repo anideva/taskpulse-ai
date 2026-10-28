@@ -7,14 +7,17 @@ function App() {
     !!localStorage.getItem("token")
   );
 
-  return (
-    <div style={{ padding: "20px" }}>
-      <h2>Smart Task Management System</h2>
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setLoggedIn(false);
+  };
 
+  return (
+    <div>
       {!loggedIn ? (
         <Login onLogin={() => setLoggedIn(true)} />
       ) : (
-        <Tasks/>
+        <Tasks onLogout={handleLogout} />
       )}
     </div>
   );
