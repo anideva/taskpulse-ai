@@ -174,18 +174,107 @@ function Tasks({ onLogout }) {
     return true;
   });
 
+  const totalTasks = tasks.length;
+  const completedCount = tasks.filter((t) => t.status === "completed").length;
+  const pendingCount = totalTasks - completedCount;
+  const completionRate =
+    totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
+  const overdueCount = tasks.filter((t) => {
+    if (!t.dueDate || t.status === "completed") return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const deadline = new Date(t.dueDate);
+    deadline.setHours(0, 0, 0, 0);
+    return deadline < today;
+  }).length;
+  const highPriorityCount = tasks.filter(
+    (t) => t.priority === "High" && t.status !== "completed"
+  ).length;
+
   return (
     <div className="container">
       {/* Top Navbar */}
       <header className="dashboard-header">
-        <div>
-          <h2>Smart Task Manager</h2>
-          <p className="subtitle">AI-assisted productivity and task breakdown</p>
+        <div className="brand-group">
+          <div className="brand-title-wrap">
+            <span className="brand-icon">⚡</span>
+            <h2 className="brand-title">TaskPulse AI</h2>
+          </div>
+          <p className="subtitle">
+            Intelligent Goal Decomposition & Workflow Dashboard
+          </p>
         </div>
         <button className="logout-btn" onClick={onLogout}>
-          Logout
+          Sign Out
         </button>
       </header>
+
+      {/* Metrics Stat Cards */}
+      <div className="metrics-grid">
+        <div className="metric-card">
+          <div className="metric-header">
+            <span className="metric-title">Total Tasks</span>
+            <span className="metric-icon">📋</span>
+          </div>
+          <div className="metric-value">{totalTasks}</div>
+          <span className="metric-sub">Active project backlog</span>
+        </div>
+
+        <div className="metric-card">
+          <div className="metric-header">
+            <span className="metric-title">In Progress</span>
+            <span className="metric-icon">⏳</span>
+          </div>
+          <div className="metric-value">{pendingCount}</div>
+          <span
+            className="metric-sub"
+            style={{ color: highPriorityCount > 0 ? "#e65100" : "#586069" }}
+          >
+            {highPriorityCount > 0
+              ? `${highPriorityCount} high priority`
+              : "Work in progress"}
+          </span>
+        </div>
+
+        <div className="metric-card">
+          <div className="metric-header">
+            <span className="metric-title">Completed</span>
+            <span className="metric-icon">✅</span>
+          </div>
+          <div className="metric-value">{completedCount}</div>
+          <span className="metric-sub">Finished milestones</span>
+        </div>
+
+        <div className="metric-card">
+          <div className="metric-header">
+            <span className="metric-title">Sprint Health</span>
+            <span className="metric-icon">⚡</span>
+          </div>
+          <div className="metric-value">{completionRate}%</div>
+          <div className="metric-progress-bar">
+            <div
+              className="metric-progress-fill"
+              style={{
+                width: `${completionRate}%`,
+                backgroundColor:
+                  completionRate === 100
+                    ? "#2e7d32"
+                    : completionRate >= 50
+                    ? "#0366d6"
+                    : "#ef6c00",
+              }}
+            />
+          </div>
+          <span
+            className="metric-sub"
+            style={{ color: overdueCount > 0 ? "#c62828" : "#2e7d32" }}
+          >
+            {overdueCount > 0
+              ? `🚨 ${overdueCount} overdue`
+              : "All deadlines on track"}
+          </span>
+        </div>
+      </div>
 
       {errorMsg && (
         <div className="alert-error">

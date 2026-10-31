@@ -48,11 +48,18 @@ function Login({ onLogin }) {
 
   return (
     <div className="login-container">
-      <h3>{isRegister ? "Create an Account" : "Welcome Back"}</h3>
-      <p style={{ textAlign: "center", color: "#666", fontSize: "14px", marginTop: "-10px", marginBottom: "20px" }}>
+      <div style={{ textAlign: "center", marginBottom: "16px" }}>
+        <div style={{ fontSize: "32px", marginBottom: "4px" }}>⚡</div>
+        <h2 style={{ margin: 0, color: "#1a1f36", fontSize: "22px", fontWeight: "700" }}>TaskPulse AI</h2>
+        <span style={{ fontSize: "12px", color: "#6366f1", fontWeight: "600", textTransform: "uppercase", letterSpacing: "1px" }}>
+          Intelligent Task Dashboard
+        </span>
+      </div>
+      <h3>{isRegister ? "Create an Account" : "Sign In to Continue"}</h3>
+      <p style={{ textAlign: "center", color: "#666", fontSize: "13px", marginTop: "-6px", marginBottom: "20px" }}>
         {isRegister
-          ? "Sign up to start organizing tasks with AI"
-          : "Sign in to access your dashboard"}
+          ? "Sign up to start organizing projects with AI subtasks"
+          : "Access your personalized task dashboard"}
       </p>
 
       {error && (

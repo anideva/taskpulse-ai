@@ -22,18 +22,35 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 25px;
-  padding-bottom: 15px;
+  padding-bottom: 18px;
   border-bottom: 1px solid #e1e4e8;
 }
 
-.dashboard-header h2 {
+.brand-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-icon {
+  font-size: 26px;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  padding: 4px 8px;
+  border-radius: 8px;
+  line-height: 1;
+}
+
+.brand-title {
   margin: 0;
   font-size: 26px;
+  font-weight: 800;
   color: #1a1f36;
+  letter-spacing: -0.5px;
 }
 
 .subtitle {
-  margin: 4px 0 0 0;
+  margin: 6px 0 0 0;
   font-size: 14px;
   color: #586069;
 }
@@ -52,6 +69,77 @@ body {
 .logout-btn:hover {
   background-color: #d73a49;
   color: #ffffff;
+}
+
+/* Metrics Stat Cards */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.metric-card {
+  background: #ffffff;
+  padding: 18px 20px;
+  border-radius: 10px;
+  border: 1px solid #e1e4e8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.metric-card:hover {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.metric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.metric-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #586069;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.metric-icon {
+  font-size: 18px;
+}
+
+.metric-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: #1a1f36;
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+
+.metric-sub {
+  font-size: 12px;
+  color: #586069;
+  font-weight: 500;
+}
+
+.metric-progress-bar {
+  width: 100%;
+  height: 6px;
+  background-color: #e1e4e8;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.metric-progress-fill {
+  height: 100%;
+  transition: width 0.4s ease;
 }
 
 /* Error Banner */
