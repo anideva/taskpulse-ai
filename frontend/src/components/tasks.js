@@ -12,6 +12,10 @@ function Tasks({ onLogout }) {
   const [loadingAI, setLoadingAI] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [filter, setFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
+  const [viewMode, setViewMode] = useState("list");
+  const [copiedStandup, setCopiedStandup] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
   const fetchTasks = useCallback(async () => {
@@ -167,12 +171,62 @@ function Tasks({ onLogout }) {
     }
   };
 
-  const filteredTasks = tasks.filter((task) => {
-    if (filter === "pending") return task.status !== "completed";
-    if (filter === "completed") return task.status === "completed";
-    if (filter === "high") return task.priority === "High";
-    return true;
-  });
+  const handleCopyStandup = () => {
+    const completedList = tasks
+      .filter((t) => t.status === "completed")
+      .map((t) => `• ${t.title}`)
+      .join("\n");
+    const pendingList = tasks
+      .filter((t) => t.status !== "completed")
+      .map((t) => `• ${t.title} [${t.priority} priority]`)
+      .join("\n");
+
+    const standupText = `🚀 TaskPulse AI - Daily Standup\n\n✅ COMPLETED:\n${
+      completedList || "None yet"
+    }\n\n⏳ IN PROGRESS:\n${pendingList || "None"}\n`;
+
+    navigator.clipboard.writeText(standupText).then(() => {
+      setCopiedStandup(true);
+      setTimeout(() => setCopiedStandup(false), 3000);
+    });
+  };
+
+  const priorityWeights = { High: 3, Medium: 2, Low: 1 };
+
+  const processedTasks = tasks
+    .filter((task) => {
+      if (filter === "pending") return task.status !== "completed";
+      if (filter === "completed") return task.status === "completed";
+      if (filter === "high") return task.priority === "High";
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const titleMatch = task.title?.toLowerCase().includes(q);
+        const descMatch = task.description?.toLowerCase().includes(q);
+        const subtaskMatch = task.subtasks?.some((st) =>
+          st.title?.toLowerCase().includes(q)
+        );
+        if (!titleMatch && !descMatch && !subtaskMatch) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === "priority") {
+        return (
+          (priorityWeights[b.priority] || 2) -
+          (priorityWeights[a.priority] || 2)
+        );
+      }
+      if (sortBy === "dueDate") {
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return new Date(a.dueDate) - new Date(b.dueDate);
+      }
+      if (sortBy === "oldest") {
+        return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+      }
+      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    });
 
   const totalTasks = tasks.length;
   const completedCount = tasks.filter((t) => t.status === "completed").length;
@@ -397,9 +451,80 @@ function Tasks({ onLogout }) {
         </form>
       </div>
 
+      {/* Search, Sort & View Controls */}
+      <div className="search-sort-bar">
+        <div className="search-input-wrap">
+          <span className="search-icon">🔍</span>
+          <input
+            type="text"
+            placeholder="Search tasks, notes, or subtasks..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="search-input"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="clear-search-btn"
+              title="Clear search"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        <div className="sort-view-actions">
+          <div className="sort-control">
+            <label>Sort:</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="sort-select"
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="dueDate">Due Date (Earliest)</option>
+              <option value="priority">Priority (High → Low)</option>
+            </select>
+          </div>
+
+          <button
+            type="button"
+            className="standup-btn"
+            onClick={handleCopyStandup}
+            title="Copy formatted standup summary to clipboard"
+          >
+            {copiedStandup ? "✓ Copied!" : "📋 Copy Standup"}
+          </button>
+
+          <div className="view-mode-toggle">
+            <button
+              type="button"
+              className={`view-mode-btn ${viewMode === "list" ? "active" : ""}`}
+              onClick={() => setViewMode("list")}
+              title="List View"
+            >
+              ☰ List
+            </button>
+            <button
+              type="button"
+              className={`view-mode-btn ${viewMode === "kanban" ? "active" : ""}`}
+              onClick={() => setViewMode("kanban")}
+              title="Kanban Board View"
+            >
+              ☷ Board
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Task Filters & Counts */}
       <div className="tasks-toolbar">
-        <h3>My Tasks ({tasks.length})</h3>
+        <h3>
+          {viewMode === "kanban" ? "Kanban Sprint Board" : "Task Backlog"} ({processedTasks.length}
+          {processedTasks.length !== tasks.length ? ` of ${tasks.length}` : ""})
+        </h3>
         <div className="filter-buttons">
           <button
             className={`filter-btn ${filter === "all" ? "active" : ""}`}
@@ -428,19 +553,22 @@ function Tasks({ onLogout }) {
         </div>
       </div>
 
-      {/* Tasks List */}
-      <div className="tasks-grid">
-        {filteredTasks.length === 0 ? (
-          <div className="empty-state">
-            <h4>No tasks found</h4>
-            <p>
-              {filter === "all"
-                ? "You haven't created any tasks yet. Create one above to get organized!"
-                : `No tasks match the "${filter}" filter.`}
-            </p>
-          </div>
-        ) : (
-          filteredTasks.map((task) => {
+      {/* MAIN VIEW: LIST OR KANBAN */}
+      {processedTasks.length === 0 ? (
+        <div className="empty-state">
+          <h4>No tasks found</h4>
+          <p>
+            {searchQuery
+              ? `No tasks match your search "${searchQuery}".`
+              : filter !== "all"
+              ? `No tasks match the "${filter}" filter.`
+              : "You haven't created any tasks yet. Create one above to get organized!"}
+          </p>
+        </div>
+      ) : viewMode === "list" ? (
+        /* LIST VIEW */
+        <div className="tasks-grid">
+          {processedTasks.map((task) => {
             const isCompleted = task.status === "completed";
             const priorityInfo = getPriorityBadge(task.priority);
             const deadlineInfo = getDeadlineInfo(task.dueDate, isCompleted);
@@ -551,9 +679,177 @@ function Tasks({ onLogout }) {
                 </div>
               </div>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      ) : (
+        /* KANBAN BOARD VIEW */
+        <div className="kanban-board">
+          {/* Column 1: In Progress */}
+          <div className="kanban-column">
+            <div className="kanban-column-header kanban-header-pending">
+              <div className="kanban-header-title">
+                <span>⏳ In Progress</span>
+                <span className="kanban-count">
+                  {processedTasks.filter((t) => t.status !== "completed").length}
+                </span>
+              </div>
+            </div>
+
+            <div className="kanban-cards-wrap">
+              {processedTasks.filter((t) => t.status !== "completed").length === 0 ? (
+                <div className="kanban-empty">No tasks in progress</div>
+              ) : (
+                processedTasks
+                  .filter((t) => t.status !== "completed")
+                  .map((task) => {
+                    const priorityInfo = getPriorityBadge(task.priority);
+                    const deadlineInfo = getDeadlineInfo(task.dueDate, false);
+                    const subtaskCount = task.subtasks?.length || 0;
+                    const completedSubtasks =
+                      task.subtasks?.filter((st) => st.completed).length || 0;
+                    const subtaskPercentage =
+                      subtaskCount > 0
+                        ? Math.round((completedSubtasks / subtaskCount) * 100)
+                        : 0;
+
+                    return (
+                      <div key={task._id} className="kanban-card">
+                        <div className="kanban-card-top">
+                          <span
+                            className="badge"
+                            style={{
+                              backgroundColor: priorityInfo.bg,
+                              color: priorityInfo.color,
+                            }}
+                          >
+                            {task.priority}
+                          </span>
+                          <span
+                            className="badge"
+                            style={{
+                              backgroundColor: deadlineInfo.bg,
+                              color: deadlineInfo.color,
+                            }}
+                          >
+                            {deadlineInfo.label}
+                          </span>
+                        </div>
+
+                        <h5 className="kanban-card-title">{task.title}</h5>
+                        {task.description && (
+                          <p className="kanban-card-desc">{task.description}</p>
+                        )}
+
+                        {subtaskCount > 0 && (
+                          <div className="kanban-subtask-mini">
+                            <span>
+                              ✓ {completedSubtasks}/{subtaskCount} subtasks
+                            </span>
+                            <div className="progress-bar-bg">
+                              <div
+                                className="progress-bar-fill"
+                                style={{ width: `${subtaskPercentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="kanban-card-actions">
+                          <button
+                            className="btn-action btn-complete"
+                            onClick={() => toggleTaskStatus(task)}
+                            title="Mark Completed"
+                          >
+                            ✓ Done →
+                          </button>
+                          <button
+                            className="btn-action btn-delete"
+                            onClick={() => deleteTask(task._id)}
+                            title="Delete Task"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+              )}
+            </div>
+          </div>
+
+          {/* Column 2: Completed */}
+          <div className="kanban-column">
+            <div className="kanban-column-header kanban-header-completed">
+              <div className="kanban-header-title">
+                <span>✅ Completed</span>
+                <span className="kanban-count">
+                  {processedTasks.filter((t) => t.status === "completed").length}
+                </span>
+              </div>
+            </div>
+
+            <div className="kanban-cards-wrap">
+              {processedTasks.filter((t) => t.status === "completed").length === 0 ? (
+                <div className="kanban-empty">No completed tasks yet</div>
+              ) : (
+                processedTasks
+                  .filter((t) => t.status === "completed")
+                  .map((task) => {
+                    const priorityInfo = getPriorityBadge(task.priority);
+                    const subtaskCount = task.subtasks?.length || 0;
+
+                    return (
+                      <div key={task._id} className="kanban-card kanban-card-done">
+                        <div className="kanban-card-top">
+                          <span
+                            className="badge"
+                            style={{
+                              backgroundColor: priorityInfo.bg,
+                              color: priorityInfo.color,
+                            }}
+                          >
+                            {task.priority}
+                          </span>
+                          <span className="badge" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>
+                            Done
+                          </span>
+                        </div>
+
+                        <h5 className="kanban-card-title title-strike">{task.title}</h5>
+                        {task.description && (
+                          <p className="kanban-card-desc">{task.description}</p>
+                        )}
+
+                        {subtaskCount > 0 && (
+                          <div className="kanban-subtask-mini">
+                            <span>✓ All {subtaskCount} subtasks done</span>
+                          </div>
+                        )}
+
+                        <div className="kanban-card-actions">
+                          <button
+                            className="btn-action btn-reopen"
+                            onClick={() => toggleTaskStatus(task)}
+                            title="Reopen Task"
+                          >
+                            ← Reopen
+                          </button>
+                          <button
+                            className="btn-action btn-delete"
+                            onClick={() => deleteTask(task._id)}
+                            title="Delete Task"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
