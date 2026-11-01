@@ -2,7 +2,7 @@ const Task = require("../models/Task");
 
 const createTask = async (req, res) => {
   try {
-    const { title, description, priority, dueDate, subtasks } = req.body;
+    const { title, description, priority, dueDate, subtasks, isFocusToday } = req.body;
 
     if (!title) {
       return res.status(400).json({ message: "Title is required" });
@@ -21,6 +21,7 @@ const createTask = async (req, res) => {
       priority,
       dueDate,
       subtasks: formattedSubtasks,
+      isFocusToday: !!isFocusToday,
     });
 
     res.status(201).json(task);
@@ -56,6 +57,9 @@ const updateTask = async (req, res) => {
     task.status = req.body.status !== undefined ? req.body.status : task.status;
     task.priority = req.body.priority !== undefined ? req.body.priority : task.priority;
     task.dueDate = req.body.dueDate !== undefined ? req.body.dueDate : task.dueDate;
+    if (req.body.isFocusToday !== undefined) {
+      task.isFocusToday = req.body.isFocusToday;
+    }
     if (req.body.subtasks !== undefined) {
       task.subtasks = req.body.subtasks;
     }

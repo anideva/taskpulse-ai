@@ -11,10 +11,25 @@ function Tasks({ onLogout }) {
   const [newSubtaskInput, setNewSubtaskInput] = useState("");
   const [loadingAI, setLoadingAI] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Filter, Search, Sort, View, & Theme States
   const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [viewMode, setViewMode] = useState("list");
+  const [theme, setTheme] = useState(
+    localStorage.getItem("taskpulse_theme") || "light"
+  );
+
+  // Pomodoro Focus Timer State
+  const [showPomodoro, setShowPomodoro] = useState(false);
+  const [pomoMinutes, setPomoMinutes] = useState(25);
+  const [pomoSeconds, setPomoSeconds] = useState(0);
+  const [pomoRunning, setPomoRunning] = useState(false);
+  const [pomoMode, setPomoMode] = useState("focus"); // "focus" | "break"
+  const [pomoActiveTask, setPomoActiveTask] = useState(null);
+
+  // Feedback states
   const [copiedStandup, setCopiedStandup] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -35,6 +50,70 @@ function Tasks({ onLogout }) {
     fetchTasks();
   }, [fetchTasks]);
 
+  // Pomodoro Timer Countdown Effect
+  useEffect(() => {
+    let interval = null;
+    if (pomoRunning) {
+      interval = setInterval(() => {
+        setPomoSeconds((prevSec) => {
+          if (prevSec > 0) {
+            return prevSec - 1;
+          }
+          setPomoMinutes((prevMin) => {
+            if (prevMin > 0) {
+              return prevMin - 1;
+            }
+            // Timer expired!
+            setPomoRunning(false);
+            const nextMode = pomoMode === "focus" ? "break" : "focus";
+            setPomoMode(nextMode);
+            setPomoMinutes(nextMode === "focus" ? 25 : 5);
+            return 0;
+          });
+          return 59;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [pomoRunning, pomoMode]);
+
+  const handleThemeChange = (newTheme) => {
+    setTheme(newTheme);
+    localStorage.setItem("taskpulse_theme", newTheme);
+  };
+
+  const isTaskDueToday = (task) => {
+    if (task.isFocusToday) return true;
+    if (!task.dueDate) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const deadline = new Date(task.dueDate);
+    deadline.setHours(0, 0, 0, 0);
+    return deadline <= today;
+  };
+
+  const toggleFocusToday = async (task, e) => {
+    if (e) e.stopPropagation();
+    try {
+      await API.put(`/tasks/${task._id}`, {
+        isFocusToday: !task.isFocusToday,
+      });
+      fetchTasks();
+    } catch (err) {
+      setErrorMsg("Failed to update daily focus state");
+    }
+  };
+
+  const startPomoForTask = (task, e) => {
+    if (e) e.stopPropagation();
+    setPomoActiveTask(task.title);
+    setShowPomodoro(true);
+    setPomoMode("focus");
+    setPomoMinutes(25);
+    setPomoSeconds(0);
+    setPomoRunning(true);
+  };
+
   const addTask = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
@@ -48,6 +127,7 @@ function Tasks({ onLogout }) {
         priority,
         dueDate: dueDate || undefined,
         subtasks: generatedSubtasks,
+        isFocusToday: filter === "today",
       });
 
       setTitle("");
@@ -116,7 +196,6 @@ function Tasks({ onLogout }) {
     try {
       const updatedSubtasks = [...(task.subtasks || [])];
       updatedSubtasks[subtaskIndex].completed = !updatedSubtasks[subtaskIndex].completed;
-
       await API.put(`/tasks/${task._id}`, { subtasks: updatedSubtasks });
       fetchTasks();
     } catch (err) {
@@ -135,8 +214,8 @@ function Tasks({ onLogout }) {
   };
 
   const getDeadlineInfo = (taskDueDate, isCompleted) => {
-    if (!taskDueDate) return { label: "No deadline", color: "#6c757d", bg: "#f8f9fa" };
-    if (isCompleted) return { label: "Completed", color: "#2e7d32", bg: "#e8f5e9" };
+    if (!taskDueDate) return { label: "No deadline", color: "#6c757d", bg: "rgba(108, 117, 125, 0.12)" };
+    if (isCompleted) return { label: "Completed", color: "#2e7d32", bg: "rgba(46, 125, 50, 0.12)" };
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -145,29 +224,29 @@ function Tasks({ onLogout }) {
     const diffDays = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) {
-      return { label: `Overdue by ${Math.abs(diffDays)}d`, color: "#c62828", bg: "#ffebee" };
+      return { label: `Overdue by ${Math.abs(diffDays)}d`, color: "#ef4444", bg: "rgba(239, 68, 68, 0.15)" };
     }
     if (diffDays === 0) {
-      return { label: "Due Today", color: "#e65100", bg: "#fff3e0" };
+      return { label: "Due Today", color: "#f97316", bg: "rgba(249, 115, 22, 0.15)" };
     }
     if (diffDays <= 3) {
-      return { label: `Due in ${diffDays}d`, color: "#ef6c00", bg: "#fff8e1" };
+      return { label: `Due in ${diffDays}d`, color: "#f59e0b", bg: "rgba(245, 158, 11, 0.15)" };
     }
     return {
       label: `Due ${new Date(taskDueDate).toLocaleDateString()}`,
-      color: "#00695c",
-      bg: "#e0f2f1",
+      color: "#0d9488",
+      bg: "rgba(13, 148, 136, 0.15)",
     };
   };
 
   const getPriorityBadge = (p) => {
     switch (p) {
       case "High":
-        return { color: "#c62828", bg: "#ffebee", label: "High Priority" };
+        return { color: "#ef4444", bg: "rgba(239, 68, 68, 0.15)", label: "High Priority" };
       case "Low":
-        return { color: "#1565c0", bg: "#e3f2fd", label: "Low Priority" };
+        return { color: "#3b82f6", bg: "rgba(59, 130, 246, 0.15)", label: "Low Priority" };
       default:
-        return { color: "#ef6c00", bg: "#fff3e0", label: "Medium Priority" };
+        return { color: "#f59e0b", bg: "rgba(245, 158, 11, 0.15)", label: "Medium Priority" };
     }
   };
 
@@ -193,11 +272,13 @@ function Tasks({ onLogout }) {
 
   const priorityWeights = { High: 3, Medium: 2, Low: 1 };
 
+  // Filter and Sort Processed Tasks
   const processedTasks = tasks
     .filter((task) => {
-      if (filter === "pending") return task.status !== "completed";
-      if (filter === "completed") return task.status === "completed";
-      if (filter === "high") return task.priority === "High";
+      if (filter === "today" && !isTaskDueToday(task)) return false;
+      if (filter === "pending" && task.status === "completed") return false;
+      if (filter === "completed" && task.status !== "completed") return false;
+      if (filter === "high" && task.priority !== "High") return false;
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -228,6 +309,7 @@ function Tasks({ onLogout }) {
       return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
     });
 
+  // Analytics Metrics
   const totalTasks = tasks.length;
   const completedCount = tasks.filter((t) => t.status === "completed").length;
   const pendingCount = totalTasks - completedCount;
@@ -245,611 +327,821 @@ function Tasks({ onLogout }) {
     (t) => t.priority === "High" && t.status !== "completed"
   ).length;
 
+  const todayTasks = tasks.filter(isTaskDueToday);
+  const todayCompletedCount = todayTasks.filter((t) => t.status === "completed").length;
+
   return (
-    <div className="container">
-      {/* Top Navbar */}
-      <header className="dashboard-header">
-        <div className="brand-group">
-          <div className="brand-title-wrap">
-            <span className="brand-icon">⚡</span>
-            <h2 className="brand-title">TaskPulse AI</h2>
-          </div>
-          <p className="subtitle">
-            Intelligent Goal Decomposition & Workflow Dashboard
-          </p>
-        </div>
-        <button className="logout-btn" onClick={onLogout}>
-          Sign Out
-        </button>
-      </header>
-
-      {/* Metrics Stat Cards */}
-      <div className="metrics-grid">
-        <div className="metric-card">
-          <div className="metric-header">
-            <span className="metric-title">Total Tasks</span>
-            <span className="metric-icon">📋</span>
-          </div>
-          <div className="metric-value">{totalTasks}</div>
-          <span className="metric-sub">Active project backlog</span>
-        </div>
-
-        <div className="metric-card">
-          <div className="metric-header">
-            <span className="metric-title">In Progress</span>
-            <span className="metric-icon">⏳</span>
-          </div>
-          <div className="metric-value">{pendingCount}</div>
-          <span
-            className="metric-sub"
-            style={{ color: highPriorityCount > 0 ? "#e65100" : "#586069" }}
-          >
-            {highPriorityCount > 0
-              ? `${highPriorityCount} high priority`
-              : "Work in progress"}
-          </span>
-        </div>
-
-        <div className="metric-card">
-          <div className="metric-header">
-            <span className="metric-title">Completed</span>
-            <span className="metric-icon">✅</span>
-          </div>
-          <div className="metric-value">{completedCount}</div>
-          <span className="metric-sub">Finished milestones</span>
-        </div>
-
-        <div className="metric-card">
-          <div className="metric-header">
-            <span className="metric-title">Sprint Health</span>
-            <span className="metric-icon">⚡</span>
-          </div>
-          <div className="metric-value">{completionRate}%</div>
-          <div className="metric-progress-bar">
-            <div
-              className="metric-progress-fill"
-              style={{
-                width: `${completionRate}%`,
-                backgroundColor:
-                  completionRate === 100
-                    ? "#2e7d32"
-                    : completionRate >= 50
-                    ? "#0366d6"
-                    : "#ef6c00",
-              }}
-            />
-          </div>
-          <span
-            className="metric-sub"
-            style={{ color: overdueCount > 0 ? "#c62828" : "#2e7d32" }}
-          >
-            {overdueCount > 0
-              ? `🚨 ${overdueCount} overdue`
-              : "All deadlines on track"}
-          </span>
-        </div>
-      </div>
-
-      {errorMsg && (
-        <div className="alert-error">
-          <span>{errorMsg}</span>
-          <button onClick={() => setErrorMsg("")} className="close-btn">
-            ✕
-          </button>
-        </div>
-      )}
-
-      {/* Task Creation Form */}
-      <div className="task-form">
-        <h4>Create New Task</h4>
-        <form onSubmit={addTask}>
-          <div className="form-row">
-            <input
-              type="text"
-              placeholder="Task Title (e.g. Prepare for System Design Interview)"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-              className="input-title"
-            />
-          </div>
-
-          <div className="form-row">
-            <textarea
-              placeholder="Task Description / Notes (optional)"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows="2"
-              className="input-description"
-            />
-          </div>
-
-          <div className="form-row-multi">
-            <div className="form-group">
-              <label>Priority</label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-                className="select-priority"
-              >
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-              </select>
+    <div className={`app-wrapper theme-${theme}`}>
+      <div className="container">
+        {/* Top Navbar */}
+        <header className="dashboard-header">
+          <div className="brand-group">
+            <div className="brand-title-wrap">
+              <span className="brand-icon">⚡</span>
+              <h2 className="brand-title">TaskPulse AI</h2>
             </div>
+            <p className="subtitle">
+              Intelligent Goal Decomposition & Workflow Dashboard
+            </p>
+          </div>
 
-            <div className="form-group">
-              <label>Due Date</label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="input-date"
-              />
-            </div>
-
-            <div className="form-group-btn">
+          <div className="header-right-actions">
+            {/* Theme Selector */}
+            <div className="theme-switcher">
               <button
                 type="button"
-                className="ai-btn"
-                onClick={generateSubtasks}
-                disabled={loadingAI}
+                className={`theme-pill ${theme === "light" ? "active" : ""}`}
+                onClick={() => handleThemeChange("light")}
+                title="Light Studio Theme"
               >
-                {loadingAI ? "⏳ Breaking down..." : "✨ AI Generate Subtasks"}
+                ☀️ Light
+              </button>
+              <button
+                type="button"
+                className={`theme-pill ${theme === "slate" ? "active" : ""}`}
+                onClick={() => handleThemeChange("slate")}
+                title="Slate Gray Theme"
+              >
+                🌫️ Slate
+              </button>
+              <button
+                type="button"
+                className={`theme-pill ${theme === "midnight" ? "active" : ""}`}
+                onClick={() => handleThemeChange("midnight")}
+                title="Midnight Obsidian Theme"
+              >
+                🌙 Dark
               </button>
             </div>
+
+            {/* Pomodoro Toggle */}
+            <button
+              type="button"
+              className={`pomo-toggle-btn ${showPomodoro ? "active" : ""}`}
+              onClick={() => setShowPomodoro(!showPomodoro)}
+              title="Toggle Pomodoro Timer"
+            >
+              ⏱️ {pomoRunning ? `${pomoMinutes}:${String(pomoSeconds).padStart(2, "0")}` : "Focus Timer"}
+            </button>
+
+            <button type="button" className="logout-btn" onClick={onLogout}>
+              Sign Out
+            </button>
           </div>
+        </header>
 
-          {/* AI Subtasks Preview */}
-          {generatedSubtasks.length > 0 && (
-            <div className="ai-subtasks-box">
-              <div className="ai-subtasks-header">
-                <strong>✨ AI Suggested Checklist ({generatedSubtasks.length}):</strong>
-                <span className="ai-badge">Will save with task</span>
+        {/* Pomodoro Focus Widget */}
+        {showPomodoro && (
+          <div className="pomodoro-widget">
+            <div className="pomodoro-header">
+              <div className="pomodoro-title">
+                <span className="pomo-clock-icon">⏱️</span>
+                <strong>Pomodoro Sprint Timer</strong>
+                <span className={`pomodoro-mode-badge ${pomoMode}`}>
+                  {pomoMode === "focus" ? "🎯 25m Focus Sprint" : "☕ 5m Short Break"}
+                </span>
               </div>
-              <ul className="subtasks-preview-list">
-                {generatedSubtasks.map((st, index) => (
-                  <li key={index} className="subtask-preview-item">
-                    <span>• {st}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeGeneratedSubtask(index)}
-                      className="remove-subtask-btn"
-                      title="Remove subtask"
-                    >
-                      ✕
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <button
+                type="button"
+                className="close-btn"
+                onClick={() => setShowPomodoro(false)}
+                title="Minimize Timer"
+              >
+                ✕
+              </button>
+            </div>
 
-              <div className="add-subtask-row">
-                <input
-                  type="text"
-                  placeholder="Add another custom subtask..."
-                  value={newSubtaskInput}
-                  onChange={(e) => setNewSubtaskInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addManualSubtask();
-                    }
+            <div className="pomodoro-body">
+              <div className="pomodoro-time-display">
+                {String(pomoMinutes).padStart(2, "0")}:{String(pomoSeconds).padStart(2, "0")}
+              </div>
+
+              {pomoActiveTask && (
+                <div className="pomodoro-task-target">
+                  🎯 Focused on: <span>{pomoActiveTask}</span>
+                </div>
+              )}
+
+              <div className="pomodoro-actions">
+                <button
+                  type="button"
+                  className={`pomo-btn ${pomoRunning ? "pomo-pause" : "pomo-start"}`}
+                  onClick={() => setPomoRunning(!pomoRunning)}
+                >
+                  {pomoRunning ? "⏸ Pause" : "▶ Start Sprint"}
+                </button>
+                <button
+                  type="button"
+                  className="pomo-btn pomo-reset"
+                  onClick={() => {
+                    setPomoRunning(false);
+                    setPomoMinutes(pomoMode === "focus" ? 25 : 5);
+                    setPomoSeconds(0);
                   }}
-                />
-                <button type="button" onClick={addManualSubtask} className="secondary-btn">
-                  + Add
+                >
+                  ↺ Reset
+                </button>
+                <button
+                  type="button"
+                  className="pomo-btn pomo-switch"
+                  onClick={() => {
+                    setPomoRunning(false);
+                    const next = pomoMode === "focus" ? "break" : "focus";
+                    setPomoMode(next);
+                    setPomoMinutes(next === "focus" ? 25 : 5);
+                    setPomoSeconds(0);
+                  }}
+                >
+                  {pomoMode === "focus" ? "Switch to 5m Break" : "Switch to 25m Focus"}
                 </button>
               </div>
             </div>
-          )}
-
-          <div className="form-actions">
-            <button type="submit" disabled={submitting} className="submit-btn">
-              {submitting ? "Saving..." : "Create Task"}
-            </button>
           </div>
-        </form>
-      </div>
+        )}
 
-      {/* Search, Sort & View Controls */}
-      <div className="search-sort-bar">
-        <div className="search-input-wrap">
-          <span className="search-icon">🔍</span>
-          <input
-            type="text"
-            placeholder="Search tasks, notes, or subtasks..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="search-input"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="clear-search-btn"
-              title="Clear search"
-            >
+        {/* Error Notification */}
+        {errorMsg && (
+          <div className="alert-error">
+            <span>{errorMsg}</span>
+            <button onClick={() => setErrorMsg("")} className="close-btn">
               ✕
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
-        <div className="sort-view-actions">
-          <div className="sort-control">
-            <label>Sort:</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="sort-select"
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="dueDate">Due Date (Earliest)</option>
-              <option value="priority">Priority (High → Low)</option>
-            </select>
+        {/* Metrics Stat Cards */}
+        <div className="metrics-grid">
+          <div className="metric-card">
+            <div className="metric-header">
+              <span className="metric-title">Total Tasks</span>
+              <span className="metric-icon">📋</span>
+            </div>
+            <div className="metric-value">{totalTasks}</div>
+            <span className="metric-sub">Active project backlog</span>
           </div>
 
-          <button
-            type="button"
-            className="standup-btn"
-            onClick={handleCopyStandup}
-            title="Copy formatted standup summary to clipboard"
-          >
-            {copiedStandup ? "✓ Copied!" : "📋 Copy Standup"}
-          </button>
-
-          <div className="view-mode-toggle">
-            <button
-              type="button"
-              className={`view-mode-btn ${viewMode === "list" ? "active" : ""}`}
-              onClick={() => setViewMode("list")}
-              title="List View"
+          <div className="metric-card">
+            <div className="metric-header">
+              <span className="metric-title">In Progress</span>
+              <span className="metric-icon">⏳</span>
+            </div>
+            <div className="metric-value">{pendingCount}</div>
+            <span
+              className="metric-sub"
+              style={{ color: highPriorityCount > 0 ? "#f97316" : "var(--text-muted)" }}
             >
-              ☰ List
-            </button>
-            <button
-              type="button"
-              className={`view-mode-btn ${viewMode === "kanban" ? "active" : ""}`}
-              onClick={() => setViewMode("kanban")}
-              title="Kanban Board View"
-            >
-              ☷ Board
-            </button>
+              {highPriorityCount > 0
+                ? `${highPriorityCount} high priority`
+                : "Work in progress"}
+            </span>
           </div>
-        </div>
-      </div>
 
-      {/* Task Filters & Counts */}
-      <div className="tasks-toolbar">
-        <h3>
-          {viewMode === "kanban" ? "Kanban Sprint Board" : "Task Backlog"} ({processedTasks.length}
-          {processedTasks.length !== tasks.length ? ` of ${tasks.length}` : ""})
-        </h3>
-        <div className="filter-buttons">
-          <button
-            className={`filter-btn ${filter === "all" ? "active" : ""}`}
-            onClick={() => setFilter("all")}
-          >
-            All ({tasks.length})
-          </button>
-          <button
-            className={`filter-btn ${filter === "pending" ? "active" : ""}`}
-            onClick={() => setFilter("pending")}
-          >
-            Pending ({tasks.filter((t) => t.status !== "completed").length})
-          </button>
-          <button
-            className={`filter-btn ${filter === "completed" ? "active" : ""}`}
-            onClick={() => setFilter("completed")}
-          >
-            Completed ({tasks.filter((t) => t.status === "completed").length})
-          </button>
-          <button
-            className={`filter-btn ${filter === "high" ? "active" : ""}`}
-            onClick={() => setFilter("high")}
-          >
-            High Priority ({tasks.filter((t) => t.priority === "High").length})
-          </button>
-        </div>
-      </div>
+          <div className="metric-card">
+            <div className="metric-header">
+              <span className="metric-title">Completed</span>
+              <span className="metric-icon">✅</span>
+            </div>
+            <div className="metric-value">{completedCount}</div>
+            <span className="metric-sub">Finished milestones</span>
+          </div>
 
-      {/* MAIN VIEW: LIST OR KANBAN */}
-      {processedTasks.length === 0 ? (
-        <div className="empty-state">
-          <h4>No tasks found</h4>
-          <p>
-            {searchQuery
-              ? `No tasks match your search "${searchQuery}".`
-              : filter !== "all"
-              ? `No tasks match the "${filter}" filter.`
-              : "You haven't created any tasks yet. Create one above to get organized!"}
-          </p>
-        </div>
-      ) : viewMode === "list" ? (
-        /* LIST VIEW */
-        <div className="tasks-grid">
-          {processedTasks.map((task) => {
-            const isCompleted = task.status === "completed";
-            const priorityInfo = getPriorityBadge(task.priority);
-            const deadlineInfo = getDeadlineInfo(task.dueDate, isCompleted);
-            const subtaskCount = task.subtasks?.length || 0;
-            const completedSubtasks =
-              task.subtasks?.filter((st) => st.completed).length || 0;
-            const subtaskPercentage =
-              subtaskCount > 0
-                ? Math.round((completedSubtasks / subtaskCount) * 100)
-                : 0;
-
-            return (
+          <div className="metric-card">
+            <div className="metric-header">
+              <span className="metric-title">Sprint Health</span>
+              <span className="metric-icon">⚡</span>
+            </div>
+            <div className="metric-value">{completionRate}%</div>
+            <div className="metric-progress-bar">
               <div
-                key={task._id}
-                className={`task-card ${isCompleted ? "task-completed" : ""}`}
+                className="metric-progress-fill"
+                style={{
+                  width: `${completionRate}%`,
+                  backgroundColor:
+                    completionRate === 100
+                      ? "#22c55e"
+                      : completionRate >= 50
+                      ? "#3b82f6"
+                      : "#f97316",
+                }}
+              />
+            </div>
+            <span
+              className="metric-sub"
+              style={{ color: overdueCount > 0 ? "#ef4444" : "#22c55e" }}
+            >
+              {overdueCount > 0
+                ? `🚨 ${overdueCount} overdue`
+                : "All deadlines on track"}
+            </span>
+          </div>
+        </div>
+
+        {/* Task Creation Form */}
+        <div className="task-form">
+          <h4>Create New Task</h4>
+          <form onSubmit={addTask}>
+            <div className="form-row">
+              <input
+                type="text"
+                placeholder="Task Title (e.g. Prepare for System Design Interview)"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+                className="input-title"
+              />
+            </div>
+
+            <div className="form-row">
+              <textarea
+                placeholder="Task Description / Notes (optional)"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows="2"
+                className="input-description"
+              />
+            </div>
+
+            <div className="form-row-multi">
+              <div className="form-group">
+                <label>Priority</label>
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value)}
+                  className="select-priority"
+                >
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Due Date</label>
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="input-date"
+                />
+              </div>
+
+              <div className="form-group-btn">
+                <button
+                  type="button"
+                  className="ai-btn"
+                  onClick={generateSubtasks}
+                  disabled={loadingAI}
+                >
+                  {loadingAI ? "⏳ Breaking down..." : "✨ AI Generate Subtasks"}
+                </button>
+              </div>
+            </div>
+
+            {/* AI Subtasks Preview */}
+            {generatedSubtasks.length > 0 && (
+              <div className="ai-subtasks-box">
+                <div className="ai-subtasks-header">
+                  <strong>✨ AI Suggested Checklist ({generatedSubtasks.length}):</strong>
+                  <span className="ai-badge">Will save with task</span>
+                </div>
+                <ul className="subtasks-preview-list">
+                  {generatedSubtasks.map((st, index) => (
+                    <li key={index} className="subtask-preview-item">
+                      <span>• {st}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeGeneratedSubtask(index)}
+                        className="remove-subtask-btn"
+                        title="Remove subtask"
+                      >
+                        ✕
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="add-subtask-row">
+                  <input
+                    type="text"
+                    placeholder="Add another custom subtask..."
+                    value={newSubtaskInput}
+                    onChange={(e) => setNewSubtaskInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addManualSubtask();
+                      }
+                    }}
+                  />
+                  <button type="button" onClick={addManualSubtask} className="secondary-btn">
+                    + Add
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="form-actions">
+              <button type="submit" disabled={submitting} className="submit-btn">
+                {submitting ? "Saving..." : "Create Task"}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Search, Sort & View Controls */}
+        <div className="search-sort-bar">
+          <div className="search-input-wrap">
+            <span className="search-icon">🔍</span>
+            <input
+              type="text"
+              placeholder="Search tasks, notes, or subtasks..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="clear-search-btn"
+                title="Clear search"
               >
-                <div className="task-card-header">
-                  <div className="task-title-group">
-                    <h4 className={isCompleted ? "title-strike" : ""}>{task.title}</h4>
-                    {task.description && (
-                      <p className="task-desc">{task.description}</p>
-                    )}
-                  </div>
+                ✕
+              </button>
+            )}
+          </div>
 
-                  <div className="task-badges">
-                    <span
-                      className="badge"
-                      style={{
-                        backgroundColor: priorityInfo.bg,
-                        color: priorityInfo.color,
-                      }}
-                    >
-                      {priorityInfo.label}
-                    </span>
-                    <span
-                      className="badge"
-                      style={{
-                        backgroundColor: deadlineInfo.bg,
-                        color: deadlineInfo.color,
-                      }}
-                    >
-                      {deadlineInfo.label}
-                    </span>
-                    <span
-                      className="badge"
-                      style={{
-                        backgroundColor: isCompleted ? "#e8f5e9" : "#fff8e1",
-                        color: isCompleted ? "#2e7d32" : "#f57c00",
-                      }}
-                    >
-                      {isCompleted ? "✓ Completed" : "⏳ Pending"}
-                    </span>
-                  </div>
-                </div>
+          <div className="sort-view-actions">
+            <div className="sort-control">
+              <label>Sort:</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="sort-select"
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="dueDate">Due Date (Earliest)</option>
+                <option value="priority">Priority (High → Low)</option>
+              </select>
+            </div>
 
-                {/* Subtasks Checklist */}
-                {subtaskCount > 0 && (
-                  <div className="subtasks-section">
-                    <div className="subtasks-progress-info">
-                      <span>
-                        Subtasks: {completedSubtasks} of {subtaskCount} completed ({subtaskPercentage}%)
+            <button
+              type="button"
+              className="standup-btn"
+              onClick={handleCopyStandup}
+              title="Copy formatted standup summary to clipboard"
+            >
+              {copiedStandup ? "✓ Copied!" : "📋 Copy Standup"}
+            </button>
+
+            <div className="view-mode-toggle">
+              <button
+                type="button"
+                className={`view-mode-btn ${viewMode === "list" ? "active" : ""}`}
+                onClick={() => setViewMode("list")}
+                title="List View"
+              >
+                ☰ List
+              </button>
+              <button
+                type="button"
+                className={`view-mode-btn ${viewMode === "kanban" ? "active" : ""}`}
+                onClick={() => setViewMode("kanban")}
+                title="Kanban Board View"
+              >
+                ☷ Board
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Task Filters & Counts */}
+        <div className="tasks-toolbar">
+          <h3>
+            {viewMode === "kanban" ? "Kanban Sprint Board" : "Task Backlog"} ({processedTasks.length}
+            {processedTasks.length !== tasks.length ? ` of ${tasks.length}` : ""})
+          </h3>
+          <div className="filter-buttons">
+            <button
+              type="button"
+              className={`filter-btn ${filter === "all" ? "active" : ""}`}
+              onClick={() => setFilter("all")}
+            >
+              All ({tasks.length})
+            </button>
+            <button
+              type="button"
+              className={`filter-btn filter-today-btn ${filter === "today" ? "active" : ""}`}
+              onClick={() => setFilter("today")}
+            >
+              ☀️ Today ({todayTasks.length})
+            </button>
+            <button
+              type="button"
+              className={`filter-btn ${filter === "pending" ? "active" : ""}`}
+              onClick={() => setFilter("pending")}
+            >
+              Pending ({tasks.filter((t) => t.status !== "completed").length})
+            </button>
+            <button
+              type="button"
+              className={`filter-btn ${filter === "completed" ? "active" : ""}`}
+              onClick={() => setFilter("completed")}
+            >
+              Completed ({tasks.filter((t) => t.status === "completed").length})
+            </button>
+            <button
+              type="button"
+              className={`filter-btn ${filter === "high" ? "active" : ""}`}
+              onClick={() => setFilter("high")}
+            >
+              High Priority ({tasks.filter((t) => t.priority === "High").length})
+            </button>
+          </div>
+        </div>
+
+        {/* Today's Focus Agenda Banner */}
+        {filter === "today" && (
+          <div className="today-agenda-banner">
+            <div className="today-banner-content">
+              <span className="today-banner-icon">☀️</span>
+              <div>
+                <h4>Today's Focus Agenda</h4>
+                <p>
+                  {new Date().toLocaleDateString(undefined, {
+                    weekday: "long",
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}{" "}
+                  — {todayCompletedCount} of {todayTasks.length} daily goals completed
+                </p>
+              </div>
+            </div>
+            {todayTasks.length > 0 && (
+              <div className="today-banner-progress">
+                <div
+                  className="today-banner-fill"
+                  style={{
+                    width: `${todayTasks.length > 0 ? (todayCompletedCount / todayTasks.length) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MAIN VIEW: LIST OR KANBAN */}
+        {processedTasks.length === 0 ? (
+          <div className="empty-state">
+            <h4>No tasks found</h4>
+            <p>
+              {searchQuery
+                ? `No tasks match your search "${searchQuery}".`
+                : filter === "today"
+                ? "No tasks scheduled for today! Click ☀️ on any task below to add it to Today's Agenda."
+                : filter !== "all"
+                ? `No tasks match the "${filter}" filter.`
+                : "You haven't created any tasks yet. Create one above to get organized!"}
+            </p>
+          </div>
+        ) : viewMode === "list" ? (
+          /* LIST VIEW */
+          <div className="tasks-grid">
+            {processedTasks.map((task) => {
+              const isCompleted = task.status === "completed";
+              const priorityInfo = getPriorityBadge(task.priority);
+              const deadlineInfo = getDeadlineInfo(task.dueDate, isCompleted);
+              const subtaskCount = task.subtasks?.length || 0;
+              const completedSubtasks =
+                task.subtasks?.filter((st) => st.completed).length || 0;
+              const subtaskPercentage =
+                subtaskCount > 0
+                  ? Math.round((completedSubtasks / subtaskCount) * 100)
+                  : 0;
+
+              return (
+                <div
+                  key={task._id}
+                  className={`task-card ${isCompleted ? "task-completed" : ""}`}
+                >
+                  <div className="task-card-header">
+                    <div className="task-title-group">
+                      <h4 className={isCompleted ? "title-strike" : ""}>{task.title}</h4>
+                      {task.description && (
+                        <p className="task-desc">{task.description}</p>
+                      )}
+                    </div>
+
+                    <div className="task-badges">
+                      <span
+                        className="badge"
+                        style={{
+                          backgroundColor: priorityInfo.bg,
+                          color: priorityInfo.color,
+                        }}
+                      >
+                        {priorityInfo.label}
                       </span>
-                      <div className="progress-bar-bg">
-                        <div
-                          className="progress-bar-fill"
-                          style={{
-                            width: `${subtaskPercentage}%`,
-                            backgroundColor:
-                              subtaskPercentage === 100 ? "#2e7d32" : "#1976d2",
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="subtasks-checklist">
-                      {task.subtasks.map((subtask, sIdx) => (
-                        <label key={sIdx} className="subtask-checkbox-item">
-                          <input
-                            type="checkbox"
-                            checked={subtask.completed}
-                            onChange={() => toggleSubtask(task, sIdx)}
-                          />
-                          <span className={subtask.completed ? "strikethrough" : ""}>
-                            {subtask.title}
-                          </span>
-                        </label>
-                      ))}
+                      <span
+                        className="badge"
+                        style={{
+                          backgroundColor: deadlineInfo.bg,
+                          color: deadlineInfo.color,
+                        }}
+                      >
+                        {deadlineInfo.label}
+                      </span>
+                      <span
+                        className="badge"
+                        style={{
+                          backgroundColor: isCompleted
+                            ? "rgba(34, 197, 94, 0.15)"
+                            : "rgba(249, 115, 22, 0.15)",
+                          color: isCompleted ? "#22c55e" : "#f97316",
+                        }}
+                      >
+                        {isCompleted ? "✓ Completed" : "⏳ Pending"}
+                      </span>
                     </div>
                   </div>
-                )}
 
-                {/* Action Buttons */}
-                <div className="task-card-footer">
-                  <button
-                    className={`btn-action ${
-                      isCompleted ? "btn-reopen" : "btn-complete"
-                    }`}
-                    onClick={() => toggleTaskStatus(task)}
-                  >
-                    {isCompleted ? "Mark as Pending" : "Mark as Completed"}
-                  </button>
-                  <button
-                    className="btn-action btn-delete"
-                    onClick={() => deleteTask(task._id)}
-                  >
-                    Delete
-                  </button>
+                  {/* Subtasks Checklist */}
+                  {subtaskCount > 0 && (
+                    <div className="subtasks-section">
+                      <div className="subtasks-progress-info">
+                        <span>
+                          Subtasks: {completedSubtasks} of {subtaskCount} completed ({subtaskPercentage}%)
+                        </span>
+                        <div className="progress-bar-bg">
+                          <div
+                            className="progress-bar-fill"
+                            style={{
+                              width: `${subtaskPercentage}%`,
+                              backgroundColor:
+                                subtaskPercentage === 100 ? "#22c55e" : "#3b82f6",
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="subtasks-checklist">
+                        {task.subtasks.map((subtask, sIdx) => (
+                          <label key={sIdx} className="subtask-checkbox-item">
+                            <input
+                              type="checkbox"
+                              checked={subtask.completed}
+                              onChange={() => toggleSubtask(task, sIdx)}
+                            />
+                            <span className={subtask.completed ? "strikethrough" : ""}>
+                              {subtask.title}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="task-card-footer">
+                    <button
+                      type="button"
+                      className={`btn-action btn-focus-today ${
+                        task.isFocusToday ? "active" : ""
+                      }`}
+                      onClick={(e) => toggleFocusToday(task, e)}
+                      title="Toggle Pin to Today's Focus"
+                    >
+                      ☀️ {task.isFocusToday ? "In Today" : "Focus Today"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-action btn-pomo-start"
+                      onClick={(e) => startPomoForTask(task, e)}
+                      title="Start 25m Focus Sprint on this task"
+                    >
+                      🎯 Focus (25m)
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn-action ${
+                        isCompleted ? "btn-reopen" : "btn-complete"
+                      }`}
+                      onClick={() => toggleTaskStatus(task)}
+                    >
+                      {isCompleted ? "Mark as Pending" : "Mark as Completed"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-action btn-delete"
+                      onClick={() => deleteTask(task._id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* KANBAN BOARD VIEW */
+          <div className="kanban-board">
+            {/* Column 1: In Progress */}
+            <div className="kanban-column">
+              <div className="kanban-column-header kanban-header-pending">
+                <div className="kanban-header-title">
+                  <span>⏳ In Progress</span>
+                  <span className="kanban-count">
+                    {processedTasks.filter((t) => t.status !== "completed").length}
+                  </span>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      ) : (
-        /* KANBAN BOARD VIEW */
-        <div className="kanban-board">
-          {/* Column 1: In Progress */}
-          <div className="kanban-column">
-            <div className="kanban-column-header kanban-header-pending">
-              <div className="kanban-header-title">
-                <span>⏳ In Progress</span>
-                <span className="kanban-count">
-                  {processedTasks.filter((t) => t.status !== "completed").length}
-                </span>
-              </div>
-            </div>
 
-            <div className="kanban-cards-wrap">
-              {processedTasks.filter((t) => t.status !== "completed").length === 0 ? (
-                <div className="kanban-empty">No tasks in progress</div>
-              ) : (
-                processedTasks
-                  .filter((t) => t.status !== "completed")
-                  .map((task) => {
-                    const priorityInfo = getPriorityBadge(task.priority);
-                    const deadlineInfo = getDeadlineInfo(task.dueDate, false);
-                    const subtaskCount = task.subtasks?.length || 0;
-                    const completedSubtasks =
-                      task.subtasks?.filter((st) => st.completed).length || 0;
-                    const subtaskPercentage =
-                      subtaskCount > 0
-                        ? Math.round((completedSubtasks / subtaskCount) * 100)
-                        : 0;
+              <div className="kanban-cards-wrap">
+                {processedTasks.filter((t) => t.status !== "completed").length === 0 ? (
+                  <div className="kanban-empty">No tasks in progress</div>
+                ) : (
+                  processedTasks
+                    .filter((t) => t.status !== "completed")
+                    .map((task) => {
+                      const priorityInfo = getPriorityBadge(task.priority);
+                      const deadlineInfo = getDeadlineInfo(task.dueDate, false);
+                      const subtaskCount = task.subtasks?.length || 0;
+                      const completedSubtasks =
+                        task.subtasks?.filter((st) => st.completed).length || 0;
+                      const subtaskPercentage =
+                        subtaskCount > 0
+                          ? Math.round((completedSubtasks / subtaskCount) * 100)
+                          : 0;
 
-                    return (
-                      <div key={task._id} className="kanban-card">
-                        <div className="kanban-card-top">
-                          <span
-                            className="badge"
-                            style={{
-                              backgroundColor: priorityInfo.bg,
-                              color: priorityInfo.color,
-                            }}
-                          >
-                            {task.priority}
-                          </span>
-                          <span
-                            className="badge"
-                            style={{
-                              backgroundColor: deadlineInfo.bg,
-                              color: deadlineInfo.color,
-                            }}
-                          >
-                            {deadlineInfo.label}
-                          </span>
-                        </div>
-
-                        <h5 className="kanban-card-title">{task.title}</h5>
-                        {task.description && (
-                          <p className="kanban-card-desc">{task.description}</p>
-                        )}
-
-                        {subtaskCount > 0 && (
-                          <div className="kanban-subtask-mini">
-                            <span>
-                              ✓ {completedSubtasks}/{subtaskCount} subtasks
+                      return (
+                        <div key={task._id} className="kanban-card">
+                          <div className="kanban-card-top">
+                            <span
+                              className="badge"
+                              style={{
+                                backgroundColor: priorityInfo.bg,
+                                color: priorityInfo.color,
+                              }}
+                            >
+                              {task.priority}
                             </span>
-                            <div className="progress-bar-bg">
-                              <div
-                                className="progress-bar-fill"
-                                style={{ width: `${subtaskPercentage}%` }}
-                              />
-                            </div>
+                            <span
+                              className="badge"
+                              style={{
+                                backgroundColor: deadlineInfo.bg,
+                                color: deadlineInfo.color,
+                              }}
+                            >
+                              {deadlineInfo.label}
+                            </span>
                           </div>
-                        )}
 
-                        <div className="kanban-card-actions">
-                          <button
-                            className="btn-action btn-complete"
-                            onClick={() => toggleTaskStatus(task)}
-                            title="Mark Completed"
-                          >
-                            ✓ Done →
-                          </button>
-                          <button
-                            className="btn-action btn-delete"
-                            onClick={() => deleteTask(task._id)}
-                            title="Delete Task"
-                          >
-                            ✕
-                          </button>
+                          <h5 className="kanban-card-title">{task.title}</h5>
+                          {task.description && (
+                            <p className="kanban-card-desc">{task.description}</p>
+                          )}
+
+                          {subtaskCount > 0 && (
+                            <div className="kanban-subtask-mini">
+                              <span>
+                                ✓ {completedSubtasks}/{subtaskCount} subtasks
+                              </span>
+                              <div className="progress-bar-bg">
+                                <div
+                                  className="progress-bar-fill"
+                                  style={{ width: `${subtaskPercentage}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="kanban-card-actions">
+                            <button
+                              type="button"
+                              className={`btn-action btn-focus-mini ${
+                                task.isFocusToday ? "active" : ""
+                              }`}
+                              onClick={(e) => toggleFocusToday(task, e)}
+                              title="Pin to Today"
+                            >
+                              ☀️
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-action btn-pomo-mini"
+                              onClick={(e) => startPomoForTask(task, e)}
+                              title="Start 25m Focus Sprint"
+                            >
+                              🎯
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-action btn-complete"
+                              onClick={() => toggleTaskStatus(task)}
+                              title="Mark Completed"
+                            >
+                              ✓ Done →
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-action btn-delete"
+                              onClick={() => deleteTask(task._id)}
+                              title="Delete Task"
+                            >
+                              ✕
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })
-              )}
-            </div>
-          </div>
-
-          {/* Column 2: Completed */}
-          <div className="kanban-column">
-            <div className="kanban-column-header kanban-header-completed">
-              <div className="kanban-header-title">
-                <span>✅ Completed</span>
-                <span className="kanban-count">
-                  {processedTasks.filter((t) => t.status === "completed").length}
-                </span>
+                      );
+                    })
+                )}
               </div>
             </div>
 
-            <div className="kanban-cards-wrap">
-              {processedTasks.filter((t) => t.status === "completed").length === 0 ? (
-                <div className="kanban-empty">No completed tasks yet</div>
-              ) : (
-                processedTasks
-                  .filter((t) => t.status === "completed")
-                  .map((task) => {
-                    const priorityInfo = getPriorityBadge(task.priority);
-                    const subtaskCount = task.subtasks?.length || 0;
+            {/* Column 2: Completed */}
+            <div className="kanban-column">
+              <div className="kanban-column-header kanban-header-completed">
+                <div className="kanban-header-title">
+                  <span>✅ Completed</span>
+                  <span className="kanban-count">
+                    {processedTasks.filter((t) => t.status === "completed").length}
+                  </span>
+                </div>
+              </div>
 
-                    return (
-                      <div key={task._id} className="kanban-card kanban-card-done">
-                        <div className="kanban-card-top">
-                          <span
-                            className="badge"
-                            style={{
-                              backgroundColor: priorityInfo.bg,
-                              color: priorityInfo.color,
-                            }}
-                          >
-                            {task.priority}
-                          </span>
-                          <span className="badge" style={{ backgroundColor: "#e8f5e9", color: "#2e7d32" }}>
-                            Done
-                          </span>
-                        </div>
+              <div className="kanban-cards-wrap">
+                {processedTasks.filter((t) => t.status === "completed").length === 0 ? (
+                  <div className="kanban-empty">No completed tasks yet</div>
+                ) : (
+                  processedTasks
+                    .filter((t) => t.status === "completed")
+                    .map((task) => {
+                      const priorityInfo = getPriorityBadge(task.priority);
+                      const subtaskCount = task.subtasks?.length || 0;
 
-                        <h5 className="kanban-card-title title-strike">{task.title}</h5>
-                        {task.description && (
-                          <p className="kanban-card-desc">{task.description}</p>
-                        )}
-
-                        {subtaskCount > 0 && (
-                          <div className="kanban-subtask-mini">
-                            <span>✓ All {subtaskCount} subtasks done</span>
+                      return (
+                        <div key={task._id} className="kanban-card kanban-card-done">
+                          <div className="kanban-card-top">
+                            <span
+                              className="badge"
+                              style={{
+                                backgroundColor: priorityInfo.bg,
+                                color: priorityInfo.color,
+                              }}
+                            >
+                              {task.priority}
+                            </span>
+                            <span
+                              className="badge"
+                              style={{
+                                backgroundColor: "rgba(34, 197, 94, 0.15)",
+                                color: "#22c55e",
+                              }}
+                            >
+                              Done
+                            </span>
                           </div>
-                        )}
 
-                        <div className="kanban-card-actions">
-                          <button
-                            className="btn-action btn-reopen"
-                            onClick={() => toggleTaskStatus(task)}
-                            title="Reopen Task"
-                          >
-                            ← Reopen
-                          </button>
-                          <button
-                            className="btn-action btn-delete"
-                            onClick={() => deleteTask(task._id)}
-                            title="Delete Task"
-                          >
-                            ✕
-                          </button>
+                          <h5 className="kanban-card-title title-strike">{task.title}</h5>
+                          {task.description && (
+                            <p className="kanban-card-desc">{task.description}</p>
+                          )}
+
+                          {subtaskCount > 0 && (
+                            <div className="kanban-subtask-mini">
+                              <span>✓ All {subtaskCount} subtasks done</span>
+                            </div>
+                          )}
+
+                          <div className="kanban-card-actions">
+                            <button
+                              type="button"
+                              className="btn-action btn-reopen"
+                              onClick={() => toggleTaskStatus(task)}
+                              title="Reopen Task"
+                            >
+                              ← Reopen
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-action btn-delete"
+                              onClick={() => deleteTask(task._id)}
+                              title="Delete Task"
+                            >
+                              ✕
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })
-              )}
+                      );
+                    })
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

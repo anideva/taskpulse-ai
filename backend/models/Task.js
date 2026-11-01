@@ -39,6 +39,10 @@ const taskSchema = new mongoose.Schema(
         },
       },
     ],
+    isFocusToday: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
