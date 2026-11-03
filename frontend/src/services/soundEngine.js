@@ -1,13 +1,15 @@
 // Web Audio API Ambient Sound & Focus Notification Engine
-// 100% offline, zero external dependencies, zero network requests
+// 100% offline, procedural generation, plays continuously without cutting out
 
 class SoundEngine {
   constructor() {
     this.ctx = null;
-    this.ambientGain = null;
+    this.masterGain = null;
     this.activeNodes = [];
+    this.progressionInterval = null;
     this.currentSound = null;
     this.volume = 0.5;
+    this.isPlaying = false;
   }
 
   initCtx() {
@@ -29,7 +31,8 @@ class SoundEngine {
       if (!this.ctx) return;
 
       const now = this.ctx.currentTime;
-      const frequencies = [528, 1056, 1584]; // 528Hz Solfeggio / Tibetan singing bowl harmonics
+      // 528Hz Solfeggio / Tibetan singing bowl harmonics
+      const frequencies = [528, 1056, 1584];
       const gains = [0.25, 0.08, 0.03];
 
       frequencies.forEach((freq, idx) => {
@@ -55,7 +58,7 @@ class SoundEngine {
 
   // Generate pink noise buffer for rain/waves
   createPinkNoiseBuffer() {
-    const bufferSize = this.ctx.sampleRate * 5; // 5-second looping buffer
+    const bufferSize = this.ctx.sampleRate * 6; // 6-second seamless looping buffer
     const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const output = buffer.getChannelData(0);
     let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
@@ -74,59 +77,112 @@ class SoundEngine {
     return buffer;
   }
 
+  // Starts continuous ambient sound that plays without interruption
   startAmbient(soundType = "zen", vol = 0.5) {
-    this.stopAmbient();
+    this.stopAmbient(false); // Stop prior sound immediately without delayed wipe
     this.volume = vol;
     this.initCtx();
     if (!this.ctx) return;
 
+    this.isPlaying = true;
     this.currentSound = soundType;
     const now = this.ctx.currentTime;
 
     // Master ambient gain with smooth fade in
-    this.ambientGain = this.ctx.createGain();
-    this.ambientGain.gain.setValueAtTime(0.001, now);
-    this.ambientGain.gain.linearRampToValueAtTime(this.volume, now + 1.5);
-    this.ambientGain.connect(this.ctx.destination);
+    this.masterGain = this.ctx.createGain();
+    this.masterGain.gain.setValueAtTime(0.001, now);
+    this.masterGain.gain.linearRampToValueAtTime(this.volume, now + 1.2);
+    this.masterGain.connect(this.ctx.destination);
 
     if (soundType === "zen") {
-      // Peaceful warm Maj9 ambient instrumental chords (C3, G3, B3, E4, D5)
-      const chord = [130.81, 196.0, 246.94, 329.63, 587.33];
+      // Evolving Ambient Instrumental Chord Progression
+      // Loops continuously across 4 peaceful chords: Cmaj9 -> Fmaj7 -> Am9 -> Gsus4
+      const chordProgression = [
+        [130.81, 196.0, 246.94, 329.63, 587.33], // Cmaj9: C3, G3, B3, E4, D5
+        [174.61, 261.63, 329.63, 392.0, 523.25], // Fmaj7: F3, C4, E4, G4, C5
+        [110.0, 164.81, 246.94, 329.63, 493.88],  // Am9: A2, E3, B3, E4, B4
+        [196.0, 261.63, 293.66, 392.0, 587.33],  // Gsus4: G3, C4, D4, G4, D5
+      ];
+
       const filter = this.ctx.createBiquadFilter();
       filter.type = "lowpass";
       filter.frequency.setValueAtTime(450, now);
 
-      // Slow LFO to breathe warmth into the filter cutoff
+      // Slow LFO to breathe warmth into the filter cutoff continuously
       const lfo = this.ctx.createOscillator();
       const lfoGain = this.ctx.createGain();
-      lfo.frequency.setValueAtTime(0.08, now); // 0.08 Hz slow breathing cycle
-      lfoGain.gain.setValueAtTime(150, now);
+      lfo.frequency.setValueAtTime(0.06, now); // 0.06 Hz slow breathing cycle
+      lfoGain.gain.setValueAtTime(160, now);
       lfo.connect(lfoGain);
       lfoGain.connect(filter.frequency);
       lfo.start(now);
-      this.activeNodes.push(lfo);
 
-      chord.forEach((freq, idx) => {
-        const osc = this.ctx.createOscillator();
-        const oscGain = this.ctx.createGain();
+      filter.connect(this.masterGain);
+      this.activeNodes.push(lfo, lfoGain, filter);
 
-        osc.type = idx % 2 === 0 ? "sine" : "triangle";
-        // Gentle micro-detuning for lush natural chorus
-        osc.frequency.setValueAtTime(freq + (Math.random() - 0.5) * 0.6, now);
+      let currentChordIdx = 0;
+      let activeOscs = [];
 
-        oscGain.gain.setValueAtTime(0.08 / chord.length, now);
-        osc.connect(oscGain);
-        oscGain.connect(filter);
+      const playChord = (chordFreqs, isFirst = false) => {
+        if (!this.isPlaying || !this.ctx) return;
+        const chordNow = this.ctx.currentTime;
+        const fadeDuration = isFirst ? 1.0 : 3.0;
 
-        osc.start(now);
-        this.activeNodes.push(osc);
-      });
+        // Create individual gain for this chord to crossfade smoothly
+        const chordGain = this.ctx.createGain();
+        chordGain.gain.setValueAtTime(0.001, chordNow);
+        chordGain.gain.linearRampToValueAtTime(0.09 / chordFreqs.length, chordNow + fadeDuration);
+        chordGain.connect(filter);
 
-      filter.connect(this.ambientGain);
-      this.activeNodes.push(filter, this.ambientGain);
+        const newOscs = [];
+
+        chordFreqs.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          osc.type = idx % 2 === 0 ? "sine" : "triangle";
+          // Gentle micro-detuning for lush natural chorus
+          osc.frequency.setValueAtTime(freq + (Math.random() - 0.5) * 0.8, chordNow);
+          osc.connect(chordGain);
+          osc.start(chordNow);
+          newOscs.push(osc);
+          this.activeNodes.push(osc);
+        });
+
+        this.activeNodes.push(chordGain);
+
+        // Fade out prior active chord
+        if (activeOscs.length > 0) {
+          const oldGain = activeOscs[0].gainNode;
+          if (oldGain) {
+            try {
+              oldGain.gain.setValueAtTime(oldGain.gain.value, chordNow);
+              oldGain.gain.linearRampToValueAtTime(0.0001, chordNow + fadeDuration);
+              setTimeout(() => {
+                activeOscs.forEach((item) => {
+                  try {
+                    item.osc.stop();
+                    item.osc.disconnect();
+                  } catch (e) {}
+                });
+              }, fadeDuration * 1000 + 100);
+            } catch (e) {}
+          }
+        }
+
+        activeOscs = newOscs.map((o) => ({ osc: o, gainNode: chordGain }));
+      };
+
+      // Play first chord immediately
+      playChord(chordProgression[0], true);
+
+      // Advance chord every 8 seconds for continuous peaceful harmonic movement
+      this.progressionInterval = setInterval(() => {
+        if (!this.isPlaying) return;
+        currentChordIdx = (currentChordIdx + 1) % chordProgression.length;
+        playChord(chordProgression[currentChordIdx], false);
+      }, 8000);
 
     } else if (soundType === "rain") {
-      // Soothing gentle rain
+      // Continuous gentle rain scape
       const noiseBuffer = this.createPinkNoiseBuffer();
       const source = this.ctx.createBufferSource();
       source.buffer = noiseBuffer;
@@ -134,16 +190,16 @@ class SoundEngine {
 
       const filter = this.ctx.createBiquadFilter();
       filter.type = "lowpass";
-      filter.frequency.setValueAtTime(950, now);
+      filter.frequency.setValueAtTime(900, now);
 
       source.connect(filter);
-      filter.connect(this.ambientGain);
+      filter.connect(this.masterGain);
       source.start(now);
 
-      this.activeNodes.push(source, filter, this.ambientGain);
+      this.activeNodes.push(source, filter);
 
     } else if (soundType === "waves") {
-      // Relaxing ocean tide swell
+      // Continuous ocean tide swell
       const noiseBuffer = this.createPinkNoiseBuffer();
       const source = this.ctx.createBufferSource();
       source.buffer = noiseBuffer;
@@ -151,60 +207,74 @@ class SoundEngine {
 
       const filter = this.ctx.createBiquadFilter();
       filter.type = "lowpass";
-      filter.frequency.setValueAtTime(600, now);
+      filter.frequency.setValueAtTime(550, now);
 
-      // Swell LFO to simulate rolling ocean waves
+      // Swell LFO to simulate continuous rolling ocean waves
       const lfo = this.ctx.createOscillator();
       const lfoGain = this.ctx.createGain();
-      lfo.frequency.setValueAtTime(0.07, now); // ~14-second wave cycle
+      lfo.frequency.setValueAtTime(0.065, now); // ~15-second natural wave cycle
       lfoGain.gain.setValueAtTime(0.25, now);
       lfo.connect(lfoGain);
 
       const waveGain = this.ctx.createGain();
-      waveGain.gain.setValueAtTime(0.15, now);
+      waveGain.gain.setValueAtTime(0.18, now);
       lfoGain.connect(waveGain.gain);
 
       source.connect(filter);
       filter.connect(waveGain);
-      waveGain.connect(this.ambientGain);
+      waveGain.connect(this.masterGain);
 
       source.start(now);
       lfo.start(now);
 
-      this.activeNodes.push(source, lfo, filter, waveGain, this.ambientGain);
+      this.activeNodes.push(source, lfo, filter, waveGain);
     }
   }
 
-  stopAmbient() {
-    if (this.ambientGain && this.ctx) {
+  stopAmbient(fade = true) {
+    this.isPlaying = false;
+    if (this.progressionInterval) {
+      clearInterval(this.progressionInterval);
+      this.progressionInterval = null;
+    }
+
+    const nodesToStop = [...this.activeNodes];
+    const gainToFade = this.masterGain;
+    this.activeNodes = [];
+    this.masterGain = null;
+    this.currentSound = null;
+
+    if (gainToFade && this.ctx && fade) {
       try {
         const now = this.ctx.currentTime;
-        this.ambientGain.gain.linearRampToValueAtTime(0.001, now + 0.8);
+        gainToFade.gain.setValueAtTime(gainToFade.gain.value, now);
+        gainToFade.gain.linearRampToValueAtTime(0.0001, now + 0.8);
       } catch (e) {
         // Safe fallback
       }
-    }
-
-    setTimeout(() => {
-      this.activeNodes.forEach((node) => {
+      setTimeout(() => {
+        nodesToStop.forEach((node) => {
+          try {
+            if (node.stop) node.stop();
+            if (node.disconnect) node.disconnect();
+          } catch (e) {}
+        });
+      }, 900);
+    } else {
+      nodesToStop.forEach((node) => {
         try {
           if (node.stop) node.stop();
           if (node.disconnect) node.disconnect();
-        } catch (e) {
-          // Ignored
-        }
+        } catch (e) {}
       });
-      this.activeNodes = [];
-      this.ambientGain = null;
-      this.currentSound = null;
-    }, 900);
+    }
   }
 
   setVolume(newVol) {
     this.volume = Math.max(0, Math.min(1, newVol));
-    if (this.ambientGain && this.ctx) {
+    if (this.masterGain && this.ctx) {
       try {
-        this.ambientGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
+        this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
       } catch (e) {
         // Safe fallback
       }

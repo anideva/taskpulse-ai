@@ -38,6 +38,7 @@ function Tasks({ onLogout }) {
   const [ambientPlaying, setAmbientPlaying] = useState(false);
   const [ambientSound, setAmbientSound] = useState("zen"); // "zen" | "rain" | "waves"
   const [ambientVolume, setAmbientVolume] = useState(0.4);
+  const [autoSound, setAutoSound] = useState(true); // Automatically run sound throughout focus sprints
 
   // Feedback states
   const [copiedStandup, setCopiedStandup] = useState(false);
@@ -88,6 +89,8 @@ function Tasks({ onLogout }) {
             }
             // Timer expired!
             setPomoRunning(false);
+            soundEngine.stopAmbient();
+            setAmbientPlaying(false);
             soundEngine.playChime();
 
             if (pomoMode === "focus") {
@@ -113,6 +116,18 @@ function Tasks({ onLogout }) {
     }
     return () => clearInterval(interval);
   }, [pomoRunning, pomoMode, pomoSessionsCompleted, getBreakDuration, getFocusDuration]);
+
+  // Synchronize continuous ambient sound throughout the entire sprint session
+  useEffect(() => {
+    if (pomoRunning && pomoMode === "focus" && autoSound) {
+      soundEngine.startAmbient(ambientSound, ambientVolume);
+      setAmbientPlaying(true);
+    } else if (!pomoRunning && autoSound && ambientPlaying) {
+      soundEngine.stopAmbient();
+      setAmbientPlaying(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pomoRunning, pomoMode, autoSound]);
 
   // Preset Switcher Handler
   const handleApplyPreset = (presetName) => {
@@ -666,7 +681,7 @@ function Tasks({ onLogout }) {
                   type="button"
                   className={`audio-toggle-btn ${ambientPlaying ? "playing" : ""}`}
                   onClick={toggleAmbientSound}
-                  title="Toggle Peaceful Instrumental / Ambient Sound"
+                  title="Toggle continuous ambient sound manually"
                 >
                   {ambientPlaying ? "🔊 Sound: Playing" : "🔈 Sound: Off"}
                 </button>
@@ -696,7 +711,20 @@ function Tasks({ onLogout }) {
               </div>
 
               <div className="audio-bar-right">
-                <span className="vol-icon" title="Volume">🔉</span>
+                <label
+                  className="auto-sound-toggle"
+                  title="Sound runs continuously throughout your entire focus session"
+                >
+                  <input
+                    type="checkbox"
+                    checked={autoSound}
+                    onChange={(e) => setAutoSound(e.target.checked)}
+                  />
+                  <span>Run throughout sprint</span>
+                </label>
+                <span className="vol-icon" title="Volume">
+                  🔉
+                </span>
                 <input
                   type="range"
                   min="0"
@@ -711,12 +739,30 @@ function Tasks({ onLogout }) {
                   type="button"
                   className="btn-chime-test"
                   onClick={() => soundEngine.playChime()}
-                  title="Test session completion bell sound"
+                  title="Test session completion bell chime"
                 >
                   🔔 Test Bell
                 </button>
               </div>
             </div>
+
+            {/* Continuous Sound Status Banner */}
+            {ambientPlaying && (
+              <div className="ambient-live-banner">
+                <span className="live-pulse-dot">●</span>
+                <span>
+                  Soundscape active:{" "}
+                  <strong>
+                    {ambientSound === "zen"
+                      ? "🎶 Peaceful Zen Chords (Continuous Progression)"
+                      : ambientSound === "rain"
+                      ? "🌧️ Gentle Rain (Continuous Scape)"
+                      : "🌊 Ocean Waves (Continuous Tide)"}
+                  </strong>{" "}
+                  — running continuously throughout your focus sprint.
+                </span>
+              </div>
+            )}
           </div>
         )}
 
