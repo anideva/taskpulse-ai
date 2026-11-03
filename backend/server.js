@@ -20,6 +20,7 @@ app.use(express.json());
 app.use(cors());
 
 app.use("/api/users", userRoutes);
+app.use("/api/auth", userRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/team", teamRoutes);
