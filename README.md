@@ -239,9 +239,10 @@ The application will launch automatically at `http://localhost:3000`.
 
 ---
 
-## 💬 Interview Quick-Reference: How to Explain This Project
+## 💬 Interview Quick-Reference: How to Explain This Project 
+Note for ones who want to know what this application is about?
 
-When discussing this project with technical recruiters or hiring managers:
+
 
 > *"TaskPulse AI is a full-stack MERN application I designed to move beyond traditional CRUD to-do apps by tackling real developer pain points: task ambiguity and sprint paralysis.*
 >
