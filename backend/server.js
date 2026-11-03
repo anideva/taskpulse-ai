@@ -7,6 +7,7 @@ const connectDB = require("./config/db");
 const userRoutes = require("./routes/userRoutes");
 const taskRoutes = require("./routes/taskRoutes");
 const aiRoutes = require("./routes/ai.routes");
+const teamRoutes = require("./routes/teamRoutes");
 
 connectDB();
 
@@ -21,6 +22,7 @@ app.use(cors());
 app.use("/api/users", userRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/team", teamRoutes);
 
 app.get("/", (req, res) => {
   res.send("API is running...");

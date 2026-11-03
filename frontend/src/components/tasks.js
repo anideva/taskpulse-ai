@@ -2,9 +2,11 @@ import { useEffect, useState, useCallback } from "react";
 import API from "../services/api";
 import soundEngine from "../services/soundEngine";
 import CalendarView from "./CalendarView";
+import TeamHub from "./TeamHub";
 
 function Tasks({ onLogout }) {
   const [tasks, setTasks] = useState([]);
+  const [workspaceMode, setWorkspaceMode] = useState("personal"); // "personal" | "team"
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("Medium");
@@ -486,7 +488,30 @@ function Tasks({ onLogout }) {
           </div>
         </header>
 
-        {/* Pomodoro Focus Studio Widget */}
+        {/* Workspace Mode Switcher: My Workspace vs Team Collaboration Hub */}
+        <div className="workspace-nav-bar">
+          <button
+            type="button"
+            className={`workspace-tab-btn ${workspaceMode === "personal" ? "active" : ""}`}
+            onClick={() => setWorkspaceMode("personal")}
+          >
+            👤 My Workspace (Client Tasks)
+          </button>
+          <button
+            type="button"
+            className={`workspace-tab-btn team-tab ${workspaceMode === "team" ? "active" : ""}`}
+            onClick={() => setWorkspaceMode("team")}
+          >
+            👥 Team Collaboration Hub
+            <span className="team-live-pill">Shared Sprint</span>
+          </button>
+        </div>
+
+        {workspaceMode === "team" ? (
+          <TeamHub />
+        ) : (
+          <>
+            {/* Pomodoro Focus Studio Widget */}
         {showPomodoro && (
           <div className="pomodoro-widget">
             <div className="pomodoro-header">
@@ -1473,6 +1498,8 @@ function Tasks({ onLogout }) {
               </div>
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
     </div>

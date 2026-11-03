@@ -60,19 +60,26 @@
   - 🔔 **Tibetan Singing Bowl Chime**: 528 Hz harmonic chime on session transitions.
 - **Dynamic Task Binding**: 1-click **"🎯 Focus"** button on task cards adapts to the selected preset duration (25m or 50m) and anchors the active task into the timer widget.
 
-### 6. 📝 1-Click Agile Standup Exporter
+### 6. 👥 Team Collaboration Hub & Shared Sprint Workspace (Isolated Multi-Member Panel)
+- **Zero-Contamination Workspace Isolation**: A dedicated top-level panel switcher separates private client deliverables (`👤 My Workspace`) from collective engineering deliverables (`👥 Team Collaboration Hub`).
+- **Workload Distribution & Delegation Bar**: Visual member chips displaying active deliverable loads per engineer (Tech Lead, Senior Frontend, Systems Lead, DevOps, Product Designer) with single-click member workload filtering.
+- **🔥 Priority Dispatch Queue**: Automatically isolates and surfaces critical, high-priority deliverables that must be worked upon first before standard backlog items, complete with quick-complete buttons.
+- **🔄 Live Audit & Change Log Feed**: Real-time activity timeline tracking *"Who is making what change"* — capturing reassignments, milestone completion, status transitions, and deliverable creation with timestamps.
+- **🚨 Standup Sync & Blocker Alert Channel**: Asynchronous daily standup update feed with dedicated urgent blocker flags (`🚨 Active Blocker`) that visually pin active engineering roadblocks to the team.
+
+### 7. 📝 1-Click Agile Standup Exporter
 - Formats today's sprint metrics, completed items, and pending deliverables into clean Markdown.
 - Automatically copies directly to clipboard for instant pasting into Slack, Discord, or Microsoft Teams daily standup threads.
 
-### 7. 🎨 Multi-Theme Customization
+### 8. 🎨 Multi-Theme Customization
 - Built-in theme switcher supporting **☀️ Clean Light**, **🌫️ Slate Gray**, and **🌙 Midnight Dark**.
 - Implemented with CSS design tokens and persisted locally across browser sessions via `localStorage`.
 
-### 8. 🔍 Instant Search & Multi-Attribute Sort
+### 9. 🔍 Instant Search & Multi-Attribute Sort
 - Real-time client-side search indexing across task titles, descriptions, and individual subtask titles.
 - Multi-criteria sorting: **Newest**, **Oldest**, **Due Date (Earliest First)**, and **Priority (High to Low)**.
 
-### 9. 🔒 Secure Multi-Tenant Authentication
+### 10. 🔒 Secure Multi-Tenant Authentication
 - Complete Sign In / Sign Up flow with bcrypt-hashed passwords.
 - Stateless JSON Web Token (JWT) authorization header validation on all protected REST endpoints.
 - Strict database query isolation (`{ user: req.user._id }`) preventing cross-user data exposure.
@@ -95,7 +102,8 @@ flowchart TD
 
     subgraph Server["Backend REST API (Node.js & Express)"]
         AuthMiddleware["JWT Verification Middleware (protect)"]
-        TaskController["Task Controller (CRUD, Isolation)"]
+        TaskController["Personal Task Controller (CRUD, User Isolation)"]
+        TeamController["Team Hub Controller (Delegation, Audit Trail, Sync)"]
         AuthController["Auth Controller (bcrypt + JWT)"]
         AIService["AI Service (OpenRouter LLM + Regex Parser)"]
         DNSFix["Resilient Google DNS (8.8.8.8 / 8.8.4.4)"]
@@ -106,13 +114,16 @@ flowchart TD
         OpenRouterAPI["OpenRouter AI Gateway"]
     end
 
-    Axios -->|"HTTPS REST Requests"| AuthMiddleware
+    Axios -->|"Personal Tasks (/api/tasks)"| AuthMiddleware
+    Axios -->|"Team Hub (/api/team/*)"| AuthMiddleware
     AuthMiddleware --> TaskController
+    AuthMiddleware --> TeamController
     AuthMiddleware --> AIService
     Axios -->|"POST /api/auth"| AuthController
     
     AuthController -->|"Persist User"| MongoAtlas
     TaskController -->|"Mongoose ODM (Scoped by user ID)"| MongoAtlas
+    TeamController -->|"Team Tasks, Activity, Messages"| MongoAtlas
     AIService -->|"Outbound HTTPS"| OpenRouterAPI
     Server -.->|"SRV DNS Resolution"| DNSFix
 ```
@@ -124,6 +135,7 @@ flowchart TD
 ### Frontend
 - **React.js (v19)** — Functional components, Hooks (`useState`, `useEffect`, `useCallback`, `useRef`).
 - **Modern CSS3** — CSS custom properties (variables), responsive Flexbox/Grid layouts, zero heavy external UI bloat.
+- **Web Audio API** — Procedural synthesizer for continuous peaceful ambient music and bells.
 - **Axios** — HTTP client with auth interceptors.
 
 ### Backend
@@ -145,6 +157,7 @@ During development, real-world networking, deployment, and LLM edge cases were i
 | **Corporate/Antivirus TLS Interception** | Local security software intercepted TLS certificates on outbound connections (`unable to verify the first certificate`). | Implemented `{ tlsAllowInvalidCertificates: true }` in Mongoose configuration and custom `https.Agent` for OpenRouter outbound calls. |
 | **LLM Output Formatting Inconsistencies** | Free tier LLMs occasionally wrap JSON in markdown code blocks (` ```json ... ``` `) or append conversational pleasantries, crashing `JSON.parse`. | Built a regex extraction pipeline `\[[\s\S]*\]` to isolate raw JSON arrays prior to parsing, with deterministic fallback parsing. |
 | **Git Working Tree Bloat** | Unintentional commit of 38,000+ files from `frontend/node_modules/` in initial git repository. | Executed `git rm -r --cached frontend/node_modules`, pruned tree, and reinforced `.gitignore` rules across both workspaces. |
+| **Workspace Isolation Between Personal & Team Tasks** | Mixing personal tasks with team deliverables causes privacy leakages and unmanageable sprint backlogs. | Architected a completely isolated data path (`/api/team/*` vs `/api/tasks`) with separate schemas, dedicated UI panels, and independent role-based assignment. |
 | **Cross-Tenant Data Exposure Prevention** | Risk of authenticated users accessing or modifying tasks created by other accounts. | Enforced strict tenancy checks in `taskController.js`: every database query binds to `req.user._id`, and ID mutations return `403 Forbidden` if ownership mismatch occurs. |
 
 ---
@@ -157,13 +170,25 @@ During development, real-world networking, deployment, and LLM edge cases were i
 | `POST` | `/api/auth/register` | Register a new user (`name`, `email`, `password`) | No |
 | `POST` | `/api/auth/login` | Authenticate user & return signed JWT | No |
 
-### 📋 Task Management Endpoints
+### 📋 Personal Task Management Endpoints
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/tasks` | Fetch all tasks for authenticated user | **Yes** (Bearer) |
 | `POST` | `/api/tasks` | Create new task with priority, due date, subtasks | **Yes** (Bearer) |
 | `PUT` | `/api/tasks/:id` | Update task status, priority, focus flag, subtasks | **Yes** (Bearer) |
 | `DELETE`| `/api/tasks/:id` | Permanently delete task owned by user | **Yes** (Bearer) |
+
+### 👥 Team Collaboration Hub Endpoints
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/team/tasks` | Fetch shared team deliverables (with automated seed) | **Yes** (Bearer) |
+| `POST` | `/api/team/tasks` | Create deliverable & delegate to teammate | **Yes** (Bearer) |
+| `PUT` | `/api/team/tasks/:id` | Update status, priority, or reassign deliverable | **Yes** (Bearer) |
+| `DELETE` | `/api/team/tasks/:id` | Remove team deliverable from shared sprint | **Yes** (Bearer) |
+| `GET` | `/api/team/activity` | Fetch real-time team audit trail & change log | **Yes** (Bearer) |
+| `GET` | `/api/team/messages` | Fetch standup sync stream & blocker alerts | **Yes** (Bearer) |
+| `POST` | `/api/team/messages` | Post standup update or flag active blocker | **Yes** (Bearer) |
+| `GET` | `/api/team/members` | Get team members directory & roles | **Yes** (Bearer) |
 
 ### 🤖 AI Assistance Endpoints
 | Method | Endpoint | Description | Auth Required |
@@ -200,6 +225,50 @@ During development, real-world networking, deployment, and LLM edge cases were i
       completed: { type: Boolean, default: false }
     }
   ],
+  timestamps: true
+}
+```
+
+### Team Task Schema (`backend/models/TeamTask.js`)
+```javascript
+{
+  title: { type: String, required: true },
+  description: { type: String },
+  status: { type: String, enum: ['Pending', 'In Progress', 'Review', 'Completed'], default: 'Pending' },
+  priority: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Medium' },
+  dueDate: { type: Date },
+  assignee: {
+    name: { type: String, required: true },
+    role: { type: String, default: 'Software Engineer' },
+    avatar: { type: String, default: 'SE' }
+  },
+  subtasks: [{ title: String, completed: Boolean }],
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  creatorName: { type: String, default: 'Team Member' },
+  timestamps: true
+}
+```
+
+### Team Activity Log Schema (`backend/models/TeamActivity.js`)
+```javascript
+{
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  userName: { type: String, required: true },
+  action: { type: String, required: true },
+  taskTitle: { type: String, required: true },
+  details: { type: String },
+  type: { type: String, enum: ['status', 'priority', 'assignee', 'create', 'delete'], default: 'status' },
+  timestamps: true
+}
+```
+
+### Team Sync Message Schema (`backend/models/TeamMessage.js`)
+```javascript
+{
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  userName: { type: String, required: true },
+  text: { type: String, required: true },
+  isBlocker: { type: Boolean, default: false },
   timestamps: true
 }
 ```
