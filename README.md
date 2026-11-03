@@ -38,9 +38,13 @@
 - Toggle high-impact tasks into a dedicated daily agenda banner (`☀️ Today's Focus`).
 - Visual daily completion bar keeps developers locked onto primary deliverables without getting overwhelmed by the larger backlog.
 
-### 4. 📋 Interactive Kanban Sprint Board & Agile List View
-- Seamlessly toggle between **Structured List View** and a **2-Column Agile Kanban Board** (*In Progress* vs *Completed*).
-- Single-click status transitions and live subtask completion percentage bars per card.
+### 4. 🗂️ Triple-View Agile Dashboard: List, Kanban Board, & Calendar Timeline
+- **Structured Agile List View**: Rapid backlog triage, search, sorting, and inline subtask checklist execution.
+- **Interactive Kanban Sprint Board**: Fluid 2-column workflow (*In Progress* vs *Completed*) with single-click card transitions and live progress bars.
+- **Interactive Calendar Delivery Timeline**:
+  - Full monthly grid with month/year navigation, quick Jump-to-Today, and priority-colored milestone chips (🔴 High, 🟡 Medium, 🟢 Low).
+  - Selected Day Deliverables Inspector: Click any calendar cell to view that day's scheduled deliverables, start Pomodoro focus sessions directly from dates, or schedule tasks on that day.
+  - Unscheduled Milestones Drawer: Pinpoints tasks without assigned deadlines for rapid scheduling.
 
 ### 5. ⏱️ Advanced Pomodoro Focus Studio & Ambient Sound Engine
 - **Configurable Work Presets**:

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import API from "../services/api";
 import soundEngine from "../services/soundEngine";
+import CalendarView from "./CalendarView";
 
 function Tasks({ onLogout }) {
   const [tasks, setTasks] = useState([]);
@@ -1019,6 +1020,14 @@ function Tasks({ onLogout }) {
               >
                 ☷ Board
               </button>
+              <button
+                type="button"
+                className={`view-mode-btn ${viewMode === "calendar" ? "active" : ""}`}
+                onClick={() => setViewMode("calendar")}
+                title="Calendar Timeline View"
+              >
+                📅 Calendar
+              </button>
             </div>
           </div>
         </div>
@@ -1026,7 +1035,12 @@ function Tasks({ onLogout }) {
         {/* Task Filters & Counts */}
         <div className="tasks-toolbar">
           <h3>
-            {viewMode === "kanban" ? "Kanban Sprint Board" : "Task Backlog"} ({processedTasks.length}
+            {viewMode === "calendar"
+              ? "Calendar Delivery Timeline"
+              : viewMode === "kanban"
+              ? "Kanban Sprint Board"
+              : "Task Backlog"}{" "}
+            ({processedTasks.length}
             {processedTasks.length !== tasks.length ? ` of ${tasks.length}` : ""})
           </h3>
           <div className="filter-buttons">
@@ -1099,8 +1113,20 @@ function Tasks({ onLogout }) {
           </div>
         )}
 
-        {/* MAIN VIEW: LIST OR KANBAN */}
-        {processedTasks.length === 0 ? (
+        {/* MAIN VIEW: LIST, KANBAN, OR CALENDAR */}
+        {viewMode === "calendar" ? (
+          <CalendarView
+            tasks={tasks}
+            onToggleTask={toggleTaskStatus}
+            onToggleFocusToday={toggleFocusToday}
+            onStartPomo={startPomoForTask}
+            onDeleteTask={deleteTask}
+            onSelectDateToCreate={(dateStr) => {
+              setDueDate(dateStr);
+              window.scrollTo({ top: 380, behavior: "smooth" });
+            }}
+          />
+        ) : processedTasks.length === 0 ? (
           <div className="empty-state">
             <h4>No tasks found</h4>
             <p>
