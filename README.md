@@ -211,8 +211,8 @@ During development, real-world networking, deployment, and LLM edge cases were i
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/task_manager_backend.git
-cd task_manager_backend
+git clone https://github.com/anideva/taskpulse-ai.git
+cd taskpulse-ai
 ```
 
 ### 2. Configure Backend
