@@ -42,9 +42,19 @@
 - Seamlessly toggle between **Structured List View** and a **2-Column Agile Kanban Board** (*In Progress* vs *Completed*).
 - Single-click status transitions and live subtask completion percentage bars per card.
 
-### 5. ⏱️ Built-In Pomodoro Focus Timer
-- Integrated customizable Pomodoro widget (25-minute Deep Work / 5-minute Short Break).
-- 1-click **"🎯 Focus (25m)"** button on individual task cards to immediately bind a task to an active sprint.
+### 5. ⏱️ Advanced Pomodoro Focus Studio & Ambient Sound Engine
+- **Configurable Work Presets**:
+  - **⚡ General Sprint**: 25m Focus / 5m Break (daily tasks, quick iterations).
+  - **💻 Deep Work & Coding**: 50m Focus / 10m Break (programming, architecture, complex debugging).
+  - **🧠 Extended Sprint**: 50m Focus / 15m Break (deep problem solving, research).
+  - **⚙️ Custom Mode**: User-defined focus and recovery durations.
+- **Automated 4-Session Long Break Workflow**: Visual 4-sprint cycle tracker (`🍅 🍅 🍅 ⚪`); completing the 4th sprint automatically triggers an extended **30-minute long recharge break**.
+- **Procedural Web Audio Ambient Sound Generator**: 100% offline procedural audio synthesizer with zero network latency or external assets:
+  - 🎶 **Peaceful Zen Chords**: Lush warm Maj9 ambient synthesizer pads.
+  - 🌧️ **Gentle Rain & Focus**: Calming pink-noise filtered rain acoustic scape.
+  - 🌊 **Ocean Waves**: Rhythmic sinusoidal wave swell modulation.
+  - 🔔 **Tibetan Singing Bowl Chime**: 528 Hz harmonic chime on session transitions.
+- **Dynamic Task Binding**: 1-click **"🎯 Focus"** button on task cards adapts to the selected preset duration (25m or 50m) and anchors the active task into the timer widget.
 
 ### 6. 📝 1-Click Agile Standup Exporter
 - Formats today's sprint metrics, completed items, and pending deliverables into clean Markdown.

@@ -216,7 +216,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .pomodoro-title {
@@ -225,12 +225,13 @@ body {
   gap: 10px;
   font-size: 14px;
   color: var(--text-main);
+  flex-wrap: wrap;
 }
 
 .pomodoro-mode-badge {
   font-size: 11px;
   font-weight: 700;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 12px;
 }
 
@@ -244,19 +245,138 @@ body {
   color: #ffffff;
 }
 
+.pomodoro-mode-badge.longBreak {
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
+}
+
+/* Cycle Tracker */
+.pomodoro-cycle-bar {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.cycle-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+
+.cycle-label {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.cycle-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.cycle-dot {
+  font-size: 14px;
+  cursor: default;
+}
+
+.cycle-text {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* Preset Pills */
+.pomodoro-presets {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.preset-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.preset-pill {
+  background-color: var(--bg-card);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  padding: 4px 10px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preset-pill:hover {
+  border-color: #6366f1;
+  color: var(--text-main);
+}
+
+.preset-pill.active {
+  background-color: #6366f1;
+  color: #ffffff;
+  border-color: #6366f1;
+}
+
+/* Custom duration inputs */
+.pomodoro-custom-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  background-color: var(--bg-card);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px dashed var(--border-color);
+  margin-bottom: 10px;
+}
+
+.custom-input-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.custom-input-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.custom-input-group input {
+  width: 60px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background-color: var(--input-bg);
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
 .pomodoro-body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  margin-top: 4px;
 }
 
 .pomodoro-time-display {
-  font-size: 44px;
+  font-size: 46px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--text-main);
   letter-spacing: 2px;
+  line-height: 1;
 }
 
 .pomodoro-task-target {
@@ -306,6 +426,108 @@ body {
   background-color: rgba(99, 102, 241, 0.2);
   color: #6366f1;
   border: 1px solid rgba(99, 102, 241, 0.4);
+}
+
+/* ==========================================================================
+   Peaceful Instrumental & Ambient Sound Bar
+   ========================================================================== */
+.pomodoro-audio-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-color);
+}
+
+.audio-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.audio-toggle-btn {
+  background-color: var(--bg-card);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  padding: 5px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.audio-toggle-btn.playing {
+  background-color: #10b981;
+  color: #ffffff;
+  border-color: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+}
+
+.audio-sound-picker {
+  display: flex;
+  gap: 6px;
+}
+
+.sound-pill {
+  background-color: var(--bg-card);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sound-pill.active {
+  background-color: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+  border-color: #6366f1;
+}
+
+.sound-pill:hover {
+  color: var(--text-main);
+}
+
+.audio-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vol-icon {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.vol-slider {
+  width: 75px;
+  cursor: pointer;
+  accent-color: #6366f1;
+  height: 4px;
+}
+
+.btn-chime-test {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-chime-test:hover {
+  color: var(--text-main);
+  border-color: var(--text-muted);
 }
 
 /* ==========================================================================

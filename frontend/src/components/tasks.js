@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import API from "../services/api";
+import soundEngine from "../services/soundEngine";
 
 function Tasks({ onLogout }) {
   const [tasks, setTasks] = useState([]);
@@ -21,17 +22,39 @@ function Tasks({ onLogout }) {
     localStorage.getItem("taskpulse_theme") || "light"
   );
 
-  // Pomodoro Focus Timer State
+  // Pomodoro Focus Timer State & Customization
   const [showPomodoro, setShowPomodoro] = useState(false);
+  const [pomoPreset, setPomoPreset] = useState("standard"); // "standard" (25/5) | "coding" (50/10) | "extended" (50/15) | "custom"
+  const [customFocusMin, setCustomFocusMin] = useState(25);
+  const [customBreakMin, setCustomBreakMin] = useState(5);
+  const [pomoSessionsCompleted, setPomoSessionsCompleted] = useState(0); // Completed focus sprints counter
   const [pomoMinutes, setPomoMinutes] = useState(25);
   const [pomoSeconds, setPomoSeconds] = useState(0);
   const [pomoRunning, setPomoRunning] = useState(false);
-  const [pomoMode, setPomoMode] = useState("focus"); // "focus" | "break"
+  const [pomoMode, setPomoMode] = useState("focus"); // "focus" | "break" | "longBreak"
   const [pomoActiveTask, setPomoActiveTask] = useState(null);
+
+  // Peaceful Instrumental & Ambient Sound States
+  const [ambientPlaying, setAmbientPlaying] = useState(false);
+  const [ambientSound, setAmbientSound] = useState("zen"); // "zen" | "rain" | "waves"
+  const [ambientVolume, setAmbientVolume] = useState(0.4);
 
   // Feedback states
   const [copiedStandup, setCopiedStandup] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  const getFocusDuration = useCallback(() => {
+    if (pomoPreset === "coding" || pomoPreset === "extended") return 50;
+    if (pomoPreset === "custom") return Math.max(1, parseInt(customFocusMin, 10) || 25);
+    return 25; // standard
+  }, [pomoPreset, customFocusMin]);
+
+  const getBreakDuration = useCallback(() => {
+    if (pomoPreset === "coding") return 10;
+    if (pomoPreset === "extended") return 15;
+    if (pomoPreset === "custom") return Math.max(1, parseInt(customBreakMin, 10) || 5);
+    return 5; // standard
+  }, [pomoPreset, customBreakMin]);
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -50,7 +73,7 @@ function Tasks({ onLogout }) {
     fetchTasks();
   }, [fetchTasks]);
 
-  // Pomodoro Timer Countdown Effect
+  // Pomodoro Timer Countdown Effect with 4-Session Long Break Automation
   useEffect(() => {
     let interval = null;
     if (pomoRunning) {
@@ -65,17 +88,74 @@ function Tasks({ onLogout }) {
             }
             // Timer expired!
             setPomoRunning(false);
-            const nextMode = pomoMode === "focus" ? "break" : "focus";
-            setPomoMode(nextMode);
-            setPomoMinutes(nextMode === "focus" ? 25 : 5);
-            return 0;
+            soundEngine.playChime();
+
+            if (pomoMode === "focus") {
+              const nextCount = pomoSessionsCompleted + 1;
+              setPomoSessionsCompleted(nextCount);
+              // Every 4 focus sessions trigger an automated 30m long break
+              if (nextCount % 4 === 0) {
+                setPomoMode("longBreak");
+                return 30; // 30 mins
+              } else {
+                setPomoMode("break");
+                return getBreakDuration();
+              }
+            } else {
+              // Coming from break or longBreak -> transition back to focus
+              setPomoMode("focus");
+              return getFocusDuration();
+            }
           });
           return 59;
         });
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [pomoRunning, pomoMode]);
+  }, [pomoRunning, pomoMode, pomoSessionsCompleted, getBreakDuration, getFocusDuration]);
+
+  // Preset Switcher Handler
+  const handleApplyPreset = (presetName) => {
+    setPomoPreset(presetName);
+    setPomoRunning(false);
+    if (pomoMode === "focus") {
+      let mins = 25;
+      if (presetName === "coding" || presetName === "extended") mins = 50;
+      else if (presetName === "custom") mins = Math.max(1, parseInt(customFocusMin, 10) || 25);
+      setPomoMinutes(mins);
+      setPomoSeconds(0);
+    } else if (pomoMode === "break") {
+      let mins = 5;
+      if (presetName === "coding") mins = 10;
+      else if (presetName === "extended") mins = 15;
+      else if (presetName === "custom") mins = Math.max(1, parseInt(customBreakMin, 10) || 5);
+      setPomoMinutes(mins);
+      setPomoSeconds(0);
+    }
+  };
+
+  // Ambient Sound Controls
+  const toggleAmbientSound = () => {
+    if (ambientPlaying) {
+      soundEngine.stopAmbient();
+      setAmbientPlaying(false);
+    } else {
+      soundEngine.startAmbient(ambientSound, ambientVolume);
+      setAmbientPlaying(true);
+    }
+  };
+
+  const handleSoundChange = (newSound) => {
+    setAmbientSound(newSound);
+    if (ambientPlaying) {
+      soundEngine.startAmbient(newSound, ambientVolume);
+    }
+  };
+
+  const handleVolumeChange = (newVol) => {
+    setAmbientVolume(newVol);
+    soundEngine.setVolume(newVol);
+  };
 
   const handleThemeChange = (newTheme) => {
     setTheme(newTheme);
@@ -109,7 +189,7 @@ function Tasks({ onLogout }) {
     setPomoActiveTask(task.title);
     setShowPomodoro(true);
     setPomoMode("focus");
-    setPomoMinutes(25);
+    setPomoMinutes(getFocusDuration());
     setPomoSeconds(0);
     setPomoRunning(true);
   };
@@ -390,15 +470,19 @@ function Tasks({ onLogout }) {
           </div>
         </header>
 
-        {/* Pomodoro Focus Widget */}
+        {/* Pomodoro Focus Studio Widget */}
         {showPomodoro && (
           <div className="pomodoro-widget">
             <div className="pomodoro-header">
               <div className="pomodoro-title">
                 <span className="pomo-clock-icon">⏱️</span>
-                <strong>Pomodoro Sprint Timer</strong>
+                <strong>Pomodoro Focus Studio</strong>
                 <span className={`pomodoro-mode-badge ${pomoMode}`}>
-                  {pomoMode === "focus" ? "🎯 25m Focus Sprint" : "☕ 5m Short Break"}
+                  {pomoMode === "focus"
+                    ? `🎯 Focus Sprint (${getFocusDuration()}m)`
+                    : pomoMode === "break"
+                    ? `☕ Short Break (${getBreakDuration()}m)`
+                    : "🎉 30m Long Recharge Break"}
                 </span>
               </div>
               <button
@@ -410,6 +494,112 @@ function Tasks({ onLogout }) {
                 ✕
               </button>
             </div>
+
+            {/* Sprint Cycle & 4th Session Long Break Indicator */}
+            <div className="pomodoro-cycle-bar">
+              <div className="cycle-indicator">
+                <span className="cycle-label">Sprint Cycle:</span>
+                <div className="cycle-dots">
+                  {[1, 2, 3, 4].map((num) => {
+                    const currentInCycle =
+                      (pomoSessionsCompleted % 4) ||
+                      (pomoSessionsCompleted > 0 && pomoMode === "longBreak" ? 4 : 0);
+                    const isDone = num <= currentInCycle;
+                    return (
+                      <span
+                        key={num}
+                        className={`cycle-dot ${isDone ? "completed" : ""}`}
+                        title={`Sprint ${num} of 4`}
+                      >
+                        {isDone ? "🍅" : "⚪"}
+                      </span>
+                    );
+                  })}
+                </div>
+                <span className="cycle-text">
+                  {pomoMode === "longBreak"
+                    ? "🎉 4 Sprints Complete! Enjoy your 30m Long Break!"
+                    : `${pomoSessionsCompleted % 4}/4 sprints completed (30m long break after 4th)`}
+                </span>
+              </div>
+            </div>
+
+            {/* Presets Selector */}
+            <div className="pomodoro-presets">
+              <span className="preset-label">Mode:</span>
+              <button
+                type="button"
+                className={`preset-pill ${pomoPreset === "standard" ? "active" : ""}`}
+                onClick={() => handleApplyPreset("standard")}
+                title="General Tasks: 25m focus / 5m break"
+              >
+                ⚡ General (25m / 5m)
+              </button>
+              <button
+                type="button"
+                className={`preset-pill ${pomoPreset === "coding" ? "active" : ""}`}
+                onClick={() => handleApplyPreset("coding")}
+                title="Coding & Deep Work: 50m focus / 10m break"
+              >
+                💻 Coding & Deep (50m / 10m)
+              </button>
+              <button
+                type="button"
+                className={`preset-pill ${pomoPreset === "extended" ? "active" : ""}`}
+                onClick={() => handleApplyPreset("extended")}
+                title="Extended Sprint: 50m focus / 15m break"
+              >
+                🧠 Deep Sprint (50m / 15m)
+              </button>
+              <button
+                type="button"
+                className={`preset-pill ${pomoPreset === "custom" ? "active" : ""}`}
+                onClick={() => handleApplyPreset("custom")}
+                title="Custom Duration"
+              >
+                ⚙️ Custom
+              </button>
+            </div>
+
+            {/* Custom Inputs (if custom preset chosen) */}
+            {pomoPreset === "custom" && (
+              <div className="pomodoro-custom-row">
+                <div className="custom-input-group">
+                  <label>Focus (mins):</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="180"
+                    value={customFocusMin}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10) || 25;
+                      setCustomFocusMin(val);
+                      if (pomoMode === "focus" && !pomoRunning) {
+                        setPomoMinutes(val);
+                        setPomoSeconds(0);
+                      }
+                    }}
+                  />
+                </div>
+                <div className="custom-input-group">
+                  <label>Break (mins):</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="60"
+                    value={customBreakMin}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10) || 5;
+                      setCustomBreakMin(val);
+                      if (pomoMode === "break" && !pomoRunning) {
+                        setPomoMinutes(val);
+                        setPomoSeconds(0);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="pomodoro-body">
               <div className="pomodoro-time-display">
@@ -435,7 +625,13 @@ function Tasks({ onLogout }) {
                   className="pomo-btn pomo-reset"
                   onClick={() => {
                     setPomoRunning(false);
-                    setPomoMinutes(pomoMode === "focus" ? 25 : 5);
+                    if (pomoMode === "focus") {
+                      setPomoMinutes(getFocusDuration());
+                    } else if (pomoMode === "break") {
+                      setPomoMinutes(getBreakDuration());
+                    } else {
+                      setPomoMinutes(30);
+                    }
                     setPomoSeconds(0);
                   }}
                 >
@@ -446,13 +642,78 @@ function Tasks({ onLogout }) {
                   className="pomo-btn pomo-switch"
                   onClick={() => {
                     setPomoRunning(false);
-                    const next = pomoMode === "focus" ? "break" : "focus";
-                    setPomoMode(next);
-                    setPomoMinutes(next === "focus" ? 25 : 5);
+                    if (pomoMode === "focus") {
+                      setPomoMode("break");
+                      setPomoMinutes(getBreakDuration());
+                    } else {
+                      setPomoMode("focus");
+                      setPomoMinutes(getFocusDuration());
+                    }
                     setPomoSeconds(0);
                   }}
                 >
-                  {pomoMode === "focus" ? "Switch to 5m Break" : "Switch to 25m Focus"}
+                  {pomoMode === "focus"
+                    ? `Switch to Break (${getBreakDuration()}m)`
+                    : `Switch to Focus (${getFocusDuration()}m)`}
+                </button>
+              </div>
+            </div>
+
+            {/* Peaceful Instrumental & Ambient Music Bar */}
+            <div className="pomodoro-audio-bar">
+              <div className="audio-bar-left">
+                <button
+                  type="button"
+                  className={`audio-toggle-btn ${ambientPlaying ? "playing" : ""}`}
+                  onClick={toggleAmbientSound}
+                  title="Toggle Peaceful Instrumental / Ambient Sound"
+                >
+                  {ambientPlaying ? "🔊 Sound: Playing" : "🔈 Sound: Off"}
+                </button>
+                <div className="audio-sound-picker">
+                  <button
+                    type="button"
+                    className={`sound-pill ${ambientSound === "zen" ? "active" : ""}`}
+                    onClick={() => handleSoundChange("zen")}
+                  >
+                    🎶 Zen Chords
+                  </button>
+                  <button
+                    type="button"
+                    className={`sound-pill ${ambientSound === "rain" ? "active" : ""}`}
+                    onClick={() => handleSoundChange("rain")}
+                  >
+                    🌧️ Gentle Rain
+                  </button>
+                  <button
+                    type="button"
+                    className={`sound-pill ${ambientSound === "waves" ? "active" : ""}`}
+                    onClick={() => handleSoundChange("waves")}
+                  >
+                    🌊 Ocean Waves
+                  </button>
+                </div>
+              </div>
+
+              <div className="audio-bar-right">
+                <span className="vol-icon" title="Volume">🔉</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={ambientVolume}
+                  onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                  className="vol-slider"
+                  title={`Volume: ${Math.round(ambientVolume * 100)}%`}
+                />
+                <button
+                  type="button"
+                  className="btn-chime-test"
+                  onClick={() => soundEngine.playChime()}
+                  title="Test session completion bell sound"
+                >
+                  🔔 Test Bell
                 </button>
               </div>
             </div>
@@ -919,9 +1180,9 @@ function Tasks({ onLogout }) {
                       type="button"
                       className="btn-action btn-pomo-start"
                       onClick={(e) => startPomoForTask(task, e)}
-                      title="Start 25m Focus Sprint on this task"
+                      title={`Start ${getFocusDuration()}m Focus Sprint on this task`}
                     >
-                      🎯 Focus (25m)
+                      🎯 Focus ({getFocusDuration()}m)
                     </button>
                     <button
                       type="button"
@@ -1032,9 +1293,9 @@ function Tasks({ onLogout }) {
                               type="button"
                               className="btn-action btn-pomo-mini"
                               onClick={(e) => startPomoForTask(task, e)}
-                              title="Start 25m Focus Sprint"
+                              title={`Start ${getFocusDuration()}m Focus Sprint`}
                             >
-                              🎯
+                              🎯 {getFocusDuration()}m
                             </button>
                             <button
                               type="button"
