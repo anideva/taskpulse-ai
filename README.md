@@ -1,9 +1,14 @@
 # ⚡ TaskPulse AI — Intelligent Agile Sprint & Task Management Platform
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://taskpulse-ai-seven.vercel.app/)
+[![Backend Status](https://img.shields.io/badge/API_Status-Live_on_Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://taskpulse-backend-5o91.onrender.com)
 [![MERN Stack](https://img.shields.io/badge/Stack-MERN-blue?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![AI Powered](https://img.shields.io/badge/AI-OpenRouter%20LLM-8A2BE2?style=for-the-badge&logo=openai)](https://openrouter.ai/)
 [![Database](https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb)](https://www.mongodb.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+
+> 🚀 **Live Application Demo:** [https://taskpulse-ai-seven.vercel.app](https://taskpulse-ai-seven.vercel.app)  
+> 📡 **Production API Server:** [https://taskpulse-backend-5o91.onrender.com](https://taskpulse-backend-5o91.onrender.com)
 
 **TaskPulse AI** is a production-grade, full-stack agile task and sprint management platform engineered to elevate daily developer productivity. Beyond standard CRUD operations, TaskPulse integrates **Generative AI milestone decomposition**, **real-time sprint health analytics**, an **interactive dual-view Kanban board**, a **daily focus agenda**, an **integrated Pomodoro timer**, and **automated standup reporting**.
 
@@ -343,6 +348,8 @@ To maintain clean architecture and prevent scope creep, these high-value capabil
 ### 📋 Ready-to-Use Resume Bullet Points
 Copy and paste these bullet points directly into your resume under your Projects section:
 
+#### **TaskPulse AI — Intelligent Agile Sprint & Task Management Platform**
+**Tech Stack:** React.js, Node.js, Express.js, MongoDB Atlas, OpenRouter LLM API, Web Audio API, JWT, bcryptjs, Modern CSS3 | [Live Demo](https://taskpulse-ai-seven.vercel.app/) | [GitHub](https://github.com/anideva/taskpulse-ai)
 * **Engineered TaskPulse AI**, a full-stack agile sprint platform featuring Generative AI milestone decomposition, triple-view workflows (Kanban, List, Calendar Timeline), a Web Audio Pomodoro focus studio, and an isolated Team Collaboration Hub.
 * **Integrated OpenRouter LLM APIs** to break down high-level technical goals into actionable 3–5 step subtasks, engineering a resilient regex-based extraction pipeline with deterministic fallback parsing.
 * **Architected an isolated Team Collaboration Hub** featuring a dynamic Priority Dispatch Queue, role-based workload delegation, an immutable change audit log, and an asynchronous blocker alert stream.
