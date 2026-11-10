@@ -23,7 +23,6 @@
 - [Database Schema](#-database-schema)
 - [Local Setup & Installation](#-local-setup--installation)
 - [Future Roadmap & Potential Enhancements](#-future-roadmap--potential-enhancements)
-- [Resume Bullet Points & Interview Guide](#-resume-bullet-points--interview-guide)
 
 ---
 
@@ -343,39 +342,6 @@ To maintain clean architecture and prevent scope creep, these high-value capabil
 
 ---
 
-## 💬 Resume Bullet Points & Interview Guide
-
-### 📋 Ready-to-Use Resume Bullet Points
-Copy and paste these bullet points directly into your resume under your Projects section:
-
-#### **TaskPulse AI — Intelligent Agile Sprint & Task Management Platform**
-**Tech Stack:** React.js, Node.js, Express.js, MongoDB Atlas, OpenRouter LLM API, Web Audio API, JWT, bcryptjs, Modern CSS3 | [Live Demo](https://taskpulse-ai-seven.vercel.app/) | [GitHub](https://github.com/anideva/taskpulse-ai)
-* **Engineered TaskPulse AI**, a full-stack agile sprint platform featuring Generative AI milestone decomposition, triple-view workflows (Kanban, List, Calendar Timeline), a Web Audio Pomodoro focus studio, and an isolated Team Collaboration Hub.
-* **Integrated OpenRouter LLM APIs** to break down high-level technical goals into actionable 3–5 step subtasks, engineering a resilient regex-based extraction pipeline with deterministic fallback parsing.
-* **Architected an isolated Team Collaboration Hub** featuring a dynamic Priority Dispatch Queue, role-based workload delegation, an immutable change audit log, and an asynchronous blocker alert stream.
-* **Developed an offline procedural Web Audio ambient sound engine** synthesizing evolving Maj9 synthesizer pads and acoustic scapes to power customizable deep-work Pomodoro sprint cycles.
-* **Resolved complex production deployment hurdles**, including Windows SRV DNS resolution failures for MongoDB Atlas, corporate TLS proxy inspection via custom HTTPS agents, and multi-tenant JWT data segregation.
-
----
-
-### 🎙️ How to Explain This Project in an Interview
-
-#### 1. The Elevator Pitch (30 seconds)
-> *"TaskPulse AI is a full-stack MERN agile sprint platform I designed to solve developer sprint paralysis and task ambiguity. Beyond standard CRUD, I integrated Generative AI to decompose complex technical goals into structured subtasks, built triple-view project management (Kanban, List, and a monthly Calendar Timeline), designed an offline Web Audio focus synthesizer for Pomodoro cycles, and created an isolated Team Collaboration Hub for workload delegation and blocker tracking."*
-
-#### 2. Why Did You Separate Personal Tasks from Team Collaboration? (System Design)
-> *"In real engineering environments, mixing private developer tasks with collective sprint deliverables causes privacy leaks and noisy backlogs. I enforced architectural separation by creating dedicated `/api/team/*` endpoints, schemas (`TeamTask`, `TeamActivity`, `TeamMessage`), and an isolated UI panel. This preserves the developer's personal workflow while giving the engineering team a dedicated priority dispatch queue and live change audit trail."*
-
-#### 3. What Was the Hardest Bug You Solved? (Engineering Depth)
-> *"I encountered three non-trivial challenges:*
-> * *First, Windows local DNS failed to resolve MongoDB Atlas SRV records, which I fixed by injecting fallback Google DNS servers (`8.8.8.8`, `8.8.4.4`) directly into Node's `dns` module before initializing the Mongoose connection.*
-> * *Second, free-tier LLM outputs frequently wrapped JSON arrays in conversational markdown or trailing text, which would crash standard `JSON.parse`. I resolved this with a regex pattern `\[[\s\S]*\]` and a deterministic text fallback parser.*
-> * *Third, ambient focus audio had clipping and premature cutoff issues; I engineered a procedural Web Audio API synthesizer that generates pure harmonic frequencies, rain noise, and ocean swells completely offline with zero audio file dependencies."*
-
-#### 4. Why Stop Here Instead of Adding More Features? (Engineering Maturity)
-> *"In production software engineering, knowing when a milestone is feature-complete is just as critical as writing code. Rather than succumbing to feature bloat or adding half-baked services that complicate the codebase, I stabilized the core platform, verified end-to-end data integrity, and documented a structured v2 roadmap (WebSockets, GitHub webhooks, and RBAC)."*
-
----
 
 ## 📄 License
 This project is open-source and available under the [MIT License](LICENSE).
